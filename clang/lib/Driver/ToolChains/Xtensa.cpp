@@ -45,6 +45,8 @@ XtensaGCCToolchainDetector::XtensaGCCToolchainDetector(
     ToolchainName = "xtensa-esp32-elf";
   else if (CPUName.equals("esp32-s2"))
     ToolchainName = "xtensa-esp32s2-elf";
+  else if (CPUName.equals("esp32-s3"))
+    ToolchainName = "xtensa-esp32s3-elf";
   else if (CPUName.equals("esp8266"))
     ToolchainName = "xtensa-lx106-elf";
 
