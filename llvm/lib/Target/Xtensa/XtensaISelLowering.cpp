@@ -95,6 +95,64 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   // make BRCOND legal, its actually only legal for a subset of conds
   setOperationAction(ISD::BRCOND, MVT::Other, Legal);
 
+  // Handle integer types.
+  for (unsigned I = MVT::FIRST_INTEGER_VALUETYPE;
+       I <= MVT::LAST_INTEGER_VALUETYPE; ++I) {
+    MVT VT = MVT::SimpleValueType(I);
+    if (isTypeLegal(VT)) {
+      // No support at all
+      setOperationAction(ISD::SDIVREM, VT, Expand);
+      setOperationAction(ISD::UDIVREM, VT, Expand);
+    }
+  }
+
+  setOperationAction(ISD::MUL, MVT::i32, Expand);
+  setOperationAction(ISD::MULHU, MVT::i32, Expand);
+  setOperationAction(ISD::MULHS, MVT::i32, Expand);
+  setOperationAction(ISD::MUL, MVT::i64, Expand);
+  setOperationAction(ISD::MULHS, MVT::i64, Expand);
+  setOperationAction(ISD::MULHU, MVT::i64, Expand);
+
+  setOperationAction(ISD::SDIV, MVT::i32, Expand);
+  setOperationAction(ISD::UDIV, MVT::i32, Expand);
+  setOperationAction(ISD::SREM, MVT::i32, Expand);
+  setOperationAction(ISD::UREM, MVT::i32, Expand);
+
+  setOperationAction(ISD::SDIV, MVT::i64, Expand);
+  setOperationAction(ISD::UDIV, MVT::i64, Expand);
+  setOperationAction(ISD::SREM, MVT::i64, Expand);
+  setOperationAction(ISD::UREM, MVT::i64, Expand);
+
+  // Xtensa doesn't support  [ADD,SUB][E,C]
+  setOperationAction(ISD::ADDC, MVT::i32, Expand);
+  setOperationAction(ISD::ADDE, MVT::i32, Expand);
+  setOperationAction(ISD::SUBC, MVT::i32, Expand);
+  setOperationAction(ISD::SUBE, MVT::i32, Expand);
+
+  setOperationAction(ISD::ADD, MVT::i64, Expand);
+  setOperationAction(ISD::SUB, MVT::i64, Expand);
+
+  // Bit Manipulation
+  setOperationAction(ISD::BSWAP, MVT::i32, Expand);
+  setOperationAction(ISD::BSWAP, MVT::i64, Expand);
+  setOperationAction(ISD::ROTL, MVT::i32, Expand);
+  setOperationAction(ISD::ROTR, MVT::i32, Expand);
+  setOperationAction(ISD::CTPOP, MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ, MVT::i32, Expand);
+  setOperationAction(ISD::CTLZ, MVT::i32, Expand);
+  setOperationAction(ISD::CTTZ_ZERO_UNDEF, MVT::i32, Expand);
+  setOperationAction(ISD::CTLZ_ZERO_UNDEF, MVT::i32, Expand);
+
+  setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
+  setOperationAction(ISD::SMUL_LOHI, MVT::i64, Expand);
+  setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
+  setOperationAction(ISD::UMUL_LOHI, MVT::i64, Expand);
+
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
+
   // Implement custom stack allocations
   setOperationAction(ISD::DYNAMIC_STACKALLOC, PtrVT, Custom);
   // Implement custom stack save and restore
