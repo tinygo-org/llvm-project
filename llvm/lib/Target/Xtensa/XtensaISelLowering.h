@@ -79,6 +79,10 @@ private:
   SDValue LowerJumpTable(JumpTableSDNode *JT, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(ConstantPoolSDNode *CP, SelectionDAG &DAG) const;
 
+  SDValue LowerDYNAMIC_STACKALLOC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
+
   SDValue getAddrPCRel(SDValue Op, SelectionDAG &DAG) const;
 
   CCAssignFn *CCAssignFnForCall(CallingConv::ID CC, bool IsVarArg) const;
