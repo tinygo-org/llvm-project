@@ -25,6 +25,9 @@ namespace XtensaISD {
 enum {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
 
+  BR_CC_T,
+  BR_CC_F,
+
   BR_JT,
 
   // Calls a function.  Operand 0 is the chain operand and operand 1
@@ -66,6 +69,7 @@ enum {
   // Operand 3 is the flag operand.
   SELECT,
   SELECT_CC,
+  SELECT_CC_FP,
 
   // Shift
   SHL,
@@ -116,6 +120,8 @@ public:
                                     std::vector<SDValue> &Ops,
                                     SelectionDAG &DAG) const override;
 
+  SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
+
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
@@ -150,6 +156,7 @@ private:
   SDValue LowerJumpTable(JumpTableSDNode *JT, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(ConstantPoolSDNode *CP, SelectionDAG &DAG) const;
 
+  SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;
