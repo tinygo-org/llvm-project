@@ -37,6 +37,12 @@ public:
   void emitInstruction(const MachineInstr *MI) override;
   void emitConstantPool() override;
   void emitMachineConstantPoolValue(MachineConstantPoolValue *MCPV) override;
+  void printOperand(const MachineInstr *MI, int opNum, raw_ostream &O);
+  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                       const char *ExtraCode, raw_ostream &O) override;
+  bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
+                             const char *ExtraCode, raw_ostream &OS) override;
+  void printMemOperand(const MachineInstr *MI, int opNum, raw_ostream &OS);
 };
 } // end namespace llvm
 

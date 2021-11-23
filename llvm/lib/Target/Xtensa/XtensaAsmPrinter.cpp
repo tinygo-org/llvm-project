@@ -14,6 +14,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "XtensaAsmPrinter.h"
+#include "MCTargetDesc/XtensaInstPrinter.h"
 #include "XtensaConstantPoolValue.h"
 #include "XtensaMCInstLower.h"
 #include "llvm/BinaryFormat/ELF.h"
@@ -213,6 +214,60 @@ void XtensaAsmPrinter::emitMachineConstantPoolValue(
     OutStreamer->emitLabel(LblSym);
     OutStreamer->emitValue(Expr, Size);
   }
+}
+
+void XtensaAsmPrinter::printOperand(const MachineInstr *MI, int OpNo,
+                                    raw_ostream &O) {
+  const MachineOperand &MO = MI->getOperand(OpNo);
+
+  switch (MO.getType()) {
+  case MachineOperand::MO_Register:
+  case MachineOperand::MO_Immediate: {
+    XtensaMCInstLower Lower(MF->getContext(), *this);
+    MCOperand MC(Lower.lowerOperand(MI->getOperand(OpNo)));
+    XtensaInstPrinter::printOperand(MC, O);
+    break;
+  }
+  case MachineOperand::MO_GlobalAddress:
+    O << *getSymbol(MO.getGlobal());
+    break;
+  default:
+    llvm_unreachable("<unknown operand type>");
+  }
+
+  if (MO.getTargetFlags()) {
+    O << ")";
+  }
+}
+
+bool XtensaAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                                       const char *ExtraCode, raw_ostream &O) {
+  if (ExtraCode && *ExtraCode == 'n') {
+    if (!MI->getOperand(OpNo).isImm())
+      return true;
+    O << -int64_t(MI->getOperand(OpNo).getImm());
+  } else {
+    printOperand(MI, OpNo, O);
+  }
+  return false;
+}
+
+bool XtensaAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
+                                             unsigned OpNo,
+                                             const char *ExtraCode,
+                                             raw_ostream &OS) {
+  XtensaInstPrinter::printAddress(MI->getOperand(OpNo).getReg(),
+                                  MI->getOperand(OpNo + 1).getImm(), OS);
+  return false;
+}
+
+void XtensaAsmPrinter::printMemOperand(const MachineInstr *MI, int opNum,
+                                       raw_ostream &OS) {
+  OS << '%'
+     << XtensaInstPrinter::getRegisterName(MI->getOperand(opNum).getReg());
+  OS << "(";
+  OS << MI->getOperand(opNum + 1).getImm();
+  OS << ")";
 }
 
 // Force static initialization.
