@@ -152,6 +152,10 @@ extui a1, a2, 7, 8
 # CHECK: encoding: [0xd0,0x20,0x00]
 extw
 
+# CHECK-INST: ill
+# CHECK: encoding: [0x00,0x00,0x00]
+ill
+
 # CHECK-INST:  isync
 # CHECK: encoding: [0x00,0x20,0x00]
 isync
