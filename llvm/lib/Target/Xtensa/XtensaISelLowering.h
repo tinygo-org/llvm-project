@@ -99,6 +99,11 @@ public:
     return VT.changeVectorElementTypeToInteger();
   }
 
+  bool isFMAFasterThanFMulAndFAdd(const MachineFunction &MF,
+                                  EVT VT) const override {
+    return true;
+  }
+
   bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
   bool isFPImmLegal(const APFloat &Imm, EVT VT,
                     bool ForCodeSize) const override;
