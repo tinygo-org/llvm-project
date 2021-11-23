@@ -104,6 +104,15 @@ public:
     return true;
   }
 
+  /// If a physical register, this returns the register that receives the
+  /// exception address on entry to an EH pad.
+  Register
+  getExceptionPointerRegister(const Constant *PersonalityFn) const override;
+  /// If a physical register, this returns the register that receives the
+  /// exception typeid on entry to a landing pad.
+  Register
+  getExceptionSelectorRegister(const Constant *PersonalityFn) const override;
+
   bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
   bool isFPImmLegal(const APFloat &Imm, EVT VT,
                     bool ForCodeSize) const override;
