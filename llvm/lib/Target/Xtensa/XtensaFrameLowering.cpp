@@ -359,3 +359,19 @@ void XtensaFrameLowering::determineCalleeSaves(MachineFunction &MF,
   int FI = MF.getFrameInfo().CreateStackObject(Size, Alignment, false);
   RS->addScavengingFrameIndex(FI);
 }
+
+void XtensaFrameLowering::processFunctionBeforeFrameFinalized(
+    MachineFunction &MF, RegScavenger *RS) const {
+  const XtensaSubtarget &STI = MF.getSubtarget<XtensaSubtarget>();
+
+  // In WinABI mode add register scavenging slot
+  // FIXME: It may be posssible to add spill slot by more optimal way
+  if (STI.isWinABI() && (MF.getFrameInfo().estimateStackSize(MF) > 256)) {
+    MachineFrameInfo &MFI = MF.getFrameInfo();
+    const TargetRegisterClass &RC = Xtensa::ARRegClass;
+    const TargetRegisterInfo &TRI = *MF.getSubtarget().getRegisterInfo();
+    unsigned Size = TRI.getSpillSize(RC);
+    Align Alignment = TRI.getSpillAlign(RC);
+    RS->addScavengingFrameIndex(MFI.CreateStackObject(Size, Alignment, false));
+  }
+}
