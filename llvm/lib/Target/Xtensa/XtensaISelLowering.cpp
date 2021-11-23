@@ -340,6 +340,16 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   computeRegisterProperties(STI.getRegisterInfo());
 }
 
+/// Return the register type for a given MVT
+MVT XtensaTargetLowering::getRegisterTypeForCallingConv(LLVMContext &Context,
+                                                      CallingConv::ID CC,
+                                                      EVT VT) const {
+  if (VT.isFloatingPoint())
+    return MVT::i32;
+
+  return TargetLowering::getRegisterTypeForCallingConv(Context, CC, VT);
+}
+
 /// If a physical register, this returns the register that receives the
 /// exception address on entry to an EH pad.
 Register XtensaTargetLowering::getExceptionPointerRegister(
