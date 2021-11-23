@@ -132,6 +132,11 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   setOperationAction(ISD::ADD, MVT::i64, Expand);
   setOperationAction(ISD::SUB, MVT::i64, Expand);
 
+  // Xtensa doesn't support s[hl,rl,ra]_parts
+  setOperationAction(ISD::SHL_PARTS, MVT::i32, Custom);
+  setOperationAction(ISD::SRA_PARTS, MVT::i32, Custom);
+  setOperationAction(ISD::SRL_PARTS, MVT::i32, Custom);
+
   // Bit Manipulation
   setOperationAction(ISD::BSWAP, MVT::i32, Expand);
   setOperationAction(ISD::BSWAP, MVT::i64, Expand);
@@ -835,6 +840,83 @@ SDValue XtensaTargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
   return DAG.getMergeValues(Ops, DL);
 }
 
+SDValue XtensaTargetLowering::LowerShiftLeftParts(SDValue Op,
+                                                  SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  MVT VT = MVT::i32;
+
+  SDValue Lo = Op.getOperand(0), Hi = Op.getOperand(1);
+  SDValue Shamt = Op.getOperand(2);
+
+  SDValue SetShiftLeft = DAG.getNode(XtensaISD::SSL, DL, MVT::Glue, Shamt);
+  SDValue ShiftLeftHi =
+      DAG.getNode(XtensaISD::SRC, DL, VT, Hi, Lo, SetShiftLeft);
+  SDValue SetShiftLeft1 = DAG.getNode(XtensaISD::SSL, DL, MVT::Glue, Shamt);
+  SDValue ShiftLeftLo = DAG.getNode(XtensaISD::SHL, DL, VT, Lo, SetShiftLeft1);
+  SDValue Cond = DAG.getNode(ISD::AND, DL, MVT::i32, Shamt,
+                             DAG.getConstant(VT.getSizeInBits(), DL, MVT::i32));
+  Lo = DAG.getNode(ISD::SELECT, DL, VT, Cond, DAG.getConstant(0, DL, VT),
+                   ShiftLeftLo);
+  Hi = DAG.getNode(ISD::SELECT, DL, VT, Cond, ShiftLeftLo, ShiftLeftHi);
+
+  SDValue Ops[2] = {Lo, Hi};
+  return DAG.getMergeValues(Ops, DL);
+}
+
+SDValue XtensaTargetLowering::LowerShiftRightParts(SDValue Op,
+                                                   SelectionDAG &DAG,
+                                                   bool IsSRA) const {
+  SDLoc DL(Op);
+  SDValue Lo = Op.getOperand(0), Hi = Op.getOperand(1);
+  SDValue Shamt = Op.getOperand(2);
+  MVT VT = MVT::i32;
+
+  if (IsSRA) {
+    SDValue SetShiftRight1 = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
+    SDValue ShiftRightLo1 =
+        DAG.getNode(XtensaISD::SRC, DL, VT, Hi, Lo, SetShiftRight1);
+
+    SDValue SetShiftRight2 = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
+    SDValue ShiftRightHi1 =
+        DAG.getNode(XtensaISD::SRA, DL, VT, Hi, SetShiftRight2);
+
+    SDValue SetShiftRight3 = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
+    SDValue ShiftRightLo2 =
+        DAG.getNode(XtensaISD::SRA, DL, VT, Hi, SetShiftRight3);
+
+    SDValue ShiftRightHi2 =
+        DAG.getNode(ISD::SRA, DL, VT, Hi, DAG.getConstant(31, DL, VT));
+
+    SDValue Cond =
+        DAG.getNode(ISD::AND, DL, MVT::i32, Shamt,
+                    DAG.getConstant(VT.getSizeInBits(), DL, MVT::i32));
+    Hi = DAG.getNode(ISD::SELECT, DL, VT, Cond, ShiftRightHi2, ShiftRightHi1);
+    Lo = DAG.getNode(ISD::SELECT, DL, VT, Cond, ShiftRightLo2, ShiftRightLo1);
+  } else {
+    SDValue SetShiftRight1 = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
+    SDValue ShiftRightLo1 =
+        DAG.getNode(XtensaISD::SRC, DL, VT, Hi, Lo, SetShiftRight1);
+
+    SDValue SetShiftRight2 = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
+    SDValue ShiftRightHi1 =
+        DAG.getNode(XtensaISD::SRL, DL, VT, Hi, SetShiftRight2);
+
+    SDValue SetShiftRight3 = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
+    SDValue ShiftRightLo2 =
+        DAG.getNode(XtensaISD::SRL, DL, VT, Hi, SetShiftRight3);
+
+    SDValue Cond =
+        DAG.getNode(ISD::AND, DL, MVT::i32, Shamt,
+                    DAG.getConstant(VT.getSizeInBits(), DL, MVT::i32));
+    Hi = DAG.getNode(ISD::SELECT, DL, VT, Cond, DAG.getConstant(0, DL, VT),
+                     ShiftRightHi1);
+    Lo = DAG.getNode(ISD::SELECT, DL, VT, Cond, ShiftRightLo2, ShiftRightLo1);
+  }
+
+  SDValue Ops[2] = {Lo, Hi};
+  return DAG.getMergeValues(Ops, DL);
+}
+
 SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
@@ -860,6 +942,12 @@ SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
     return LowerSTACKRESTORE(Op, DAG);
   case ISD::DYNAMIC_STACKALLOC:
     return LowerDYNAMIC_STACKALLOC(Op, DAG);
+  case ISD::SHL_PARTS:
+    return LowerShiftLeftParts(Op, DAG);
+  case ISD::SRA_PARTS:
+    return LowerShiftRightParts(Op, DAG, true);
+  case ISD::SRL_PARTS:
+    return LowerShiftRightParts(Op, DAG, false);
   default:
     llvm_unreachable("Unexpected node to lower");
   }
@@ -875,6 +963,12 @@ const char *XtensaTargetLowering::getTargetNodeName(unsigned Opcode) const {
     OPCODE(PCREL_WRAPPER);
     OPCODE(SELECT);
     OPCODE(SELECT_CC);
+    OPCODE(SHL);
+    OPCODE(SRA);
+    OPCODE(SRL);
+    OPCODE(SRC);
+    OPCODE(SSL);
+    OPCODE(SSR);
   }
   return NULL;
 #undef OPCODE
@@ -1003,9 +1097,44 @@ XtensaTargetLowering::emitSelectCC(MachineInstr &MI,
 
 MachineBasicBlock *XtensaTargetLowering::EmitInstrWithCustomInserter(
     MachineInstr &MI, MachineBasicBlock *MBB) const {
+  const TargetInstrInfo &TII = *Subtarget.getInstrInfo();
+  DebugLoc DL = MI.getDebugLoc();
+
   switch (MI.getOpcode()) {
   case Xtensa::SELECT:
     return emitSelectCC(MI, MBB);
+
+  case Xtensa::SLL_P: {
+    MachineOperand &R = MI.getOperand(0);
+    MachineOperand &S = MI.getOperand(1);
+    MachineOperand &SA = MI.getOperand(2);
+
+    BuildMI(*MBB, MI, DL, TII.get(Xtensa::SSL)).addReg(SA.getReg());
+    BuildMI(*MBB, MI, DL, TII.get(Xtensa::SLL), R.getReg()).addReg(S.getReg());
+    MI.eraseFromParent();
+    return MBB;
+  }
+  case Xtensa::SRA_P: {
+    MachineOperand &R = MI.getOperand(0);
+    MachineOperand &T = MI.getOperand(1);
+    MachineOperand &SA = MI.getOperand(2);
+
+    BuildMI(*MBB, MI, DL, TII.get(Xtensa::SSR)).addReg(SA.getReg());
+    BuildMI(*MBB, MI, DL, TII.get(Xtensa::SRA), R.getReg()).addReg(T.getReg());
+    MI.eraseFromParent();
+    return MBB;
+  }
+  case Xtensa::SRL_P: {
+    MachineOperand &R = MI.getOperand(0);
+    MachineOperand &T = MI.getOperand(1);
+    MachineOperand &SA = MI.getOperand(2);
+
+    BuildMI(*MBB, MI, DL, TII.get(Xtensa::SSR)).addReg(SA.getReg());
+    BuildMI(*MBB, MI, DL, TII.get(Xtensa::SRL), R.getReg()).addReg(T.getReg());
+    MI.eraseFromParent();
+    return MBB;
+  }
+
   default:
     llvm_unreachable("Unexpected instr type to insert");
   }
