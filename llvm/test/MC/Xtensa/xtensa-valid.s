@@ -213,6 +213,10 @@ nop
 # CHECK: encoding: [0x60,0x45,0x20]
 or a4, a5, a6
 
+# CHECK-INST: rer     a3, a4
+# CHECK: encoding: [0x30,0x64,0x40]
+rer a3, a4
+ 
 # CHECK-INST: ret
 # CHECK: encoding: [0x80,0x00,0x00]
 ret
@@ -298,6 +302,10 @@ subx4 a3, sp, a6
 # CHECK-INST: subx8   a4, a1, a7
 # CHECK: encoding: [0x70,0x41,0xf0]
 subx8 a4, sp, a7
+
+# CHECK-INST: wer     a3, a4
+# CHECK: encoding: [0x30,0x74,0x40]
+wer a3, a4
 
 # CHECK-INST: wsr     a8, sar
 # CHECK: encoding: [0x80,0x03,0x13]
