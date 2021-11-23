@@ -44,6 +44,8 @@ def SDT_XtensaSSR                 : SDTypeProfile<0, 1, [SDTCisVT<0, i32>]>;
 def SDT_XtensaMEMBARRIER         : SDTypeProfile<0, 0, []>;
 def SDT_XtensaRUR                : SDTypeProfile<1, 1, [SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 
+def SDT_XtensaLoopEnd             : SDTypeProfile<0, 1, [SDTCisVT<0, OtherVT>]>;
+
 //===----------------------------------------------------------------------===//
 // Node definitions
 //===----------------------------------------------------------------------===//
@@ -107,3 +109,7 @@ def Xtensa_mem_barrier: SDNode<"XtensaISD::MEMW", SDT_XtensaMEMBARRIER,
 
 def Xtensa_rur: SDNode<"XtensaISD::RUR", SDT_XtensaRUR,
                       [SDNPInGlue]>;
+
+def Xtensa_loopend: SDNode<"XtensaISD::LOOPEND", SDT_XtensaLoopEnd,
+                          [SDNPHasChain, SDNPInGlue]>;
+

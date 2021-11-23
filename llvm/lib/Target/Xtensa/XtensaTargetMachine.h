@@ -38,6 +38,8 @@ public:
                       Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
                       CodeGenOpt::Level OL, bool JIT);
 
+  TargetTransformInfo getTargetTransformInfo(const Function &F) override;
+
   // Override TargetMachine.
   const XtensaSubtarget *getSubtargetImpl() const { return &Subtarget; }
   const XtensaSubtarget *getSubtargetImpl(const Function &F) const override;
@@ -53,3 +55,4 @@ protected:
 } // end namespace llvm
 
 #endif /* LLVM_LIB_TARGET_XTENSA_XTENSATARGETMACHINE_H */
+

@@ -92,6 +92,10 @@ public:
                                    int64_t offset,
                                    ArrayRef<MachineOperand> Cond, DebugLoc DL,
                                    int *BytesAdded) const;
+  bool analyzeCompare(const MachineInstr &MI, Register &SrcReg,
+                      Register &SrcReg2, int &CmpMask,
+                      int &CmpValue) const override;
+
   // Return true if MI is a conditional or unconditional branch.
   // When returning true, set Cond to the mask of condition-code
   // values on which the instruction will branch, and set Target

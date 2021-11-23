@@ -49,6 +49,9 @@ enum {
   CMPOEQ,
   CMPOLE,
   CMPOLT,
+
+  LOOPEND,
+
   // FP multipy-add/sub
   MADD,
   MSUB,
