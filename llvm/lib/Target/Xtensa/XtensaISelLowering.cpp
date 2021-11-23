@@ -42,6 +42,7 @@ static bool isLongCall(const char *str) {
 XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
                                            const XtensaSubtarget &STI)
     : TargetLowering(tm), Subtarget(STI) {
+  MVT PtrVT = MVT::i32;
   // Set up the register classes.
   addRegisterClass(MVT::i32, &Xtensa::ARRegClass);
 
@@ -67,8 +68,20 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
     setLoadExtAction(ISD::EXTLOAD, VT, MVT::i1, Promote);
   }
 
+  // Handle the various types of symbolic address.
+  setOperationAction(ISD::ConstantPool, PtrVT, Custom);
+  setOperationAction(ISD::GlobalAddress, PtrVT, Custom);
+  setOperationAction(ISD::BlockAddress, PtrVT, Custom);
+  setOperationAction(ISD::JumpTable, PtrVT, Custom);
+
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
+}
+
+bool XtensaTargetLowering::isOffsetFoldingLegal(
+    const GlobalAddressSDNode *GA) const {
+  // The Xtensa target isn't yet aware of offsets.
+  return false;
 }
 
 bool XtensaTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT,
@@ -481,7 +494,7 @@ XtensaTargetLowering::LowerCall(CallLoweringInfo &CLI,
 }
 
 bool XtensaTargetLowering::CanLowerReturn(
-    CallingConv::ID CallConv, MachineFunction & MF, bool IsVarArg,
+    CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
   SmallVector<CCValAssign, 16> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
@@ -570,6 +583,86 @@ SDValue XtensaTargetLowering::LowerImmediateFP(SDValue Op,
   return Op;
 }
 
+SDValue XtensaTargetLowering::LowerGlobalAddress(SDValue Op,
+                                                 SelectionDAG &DAG) const {
+  //  Reloc::Model RM = DAG.getTarget().getRelocationModel();
+  SDLoc DL(Op);
+
+  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Op)) {
+    auto PtrVt = getPointerTy(DAG.getDataLayout());
+    const GlobalValue *GV = G->getGlobal();
+
+    // Check Op SDNode users
+    // If there are only CALL nodes, don't expand Global Address
+    SDNode &OpNode = *Op.getNode();
+    bool Val = false;
+    for (SDNode::use_iterator UI = OpNode.use_begin(); UI != OpNode.use_end();
+         ++UI) {
+      SDNode &User = *UI.getUse().getUser();
+      unsigned OpCode = User.getOpcode();
+      if (OpCode != XtensaISD::CALL) {
+        Val = true;
+        break;
+      }
+    }
+    if (!Val) {
+      SDValue TargAddr = DAG.getTargetGlobalAddress(G->getGlobal(), DL, PtrVt,
+                                                    0, 0 /* TargetFlags */);
+      return TargAddr;
+    }
+
+    SDValue CPAddr = DAG.getTargetConstantPool(GV, PtrVt, Align(4));
+    SDValue CPWrap = getAddrPCRel(CPAddr, DAG);
+
+    return CPWrap;
+  }
+  llvm_unreachable("invalid global addresses to lower");
+}
+
+SDValue XtensaTargetLowering::LowerBlockAddress(BlockAddressSDNode *Node,
+                                                SelectionDAG &DAG) const {
+  const BlockAddress *BA = Node->getBlockAddress();
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+
+  XtensaConstantPoolValue *CPV =
+      XtensaConstantPoolConstant::Create(BA, 0, XtensaCP::CPBlockAddress, 0);
+  SDValue CPAddr = DAG.getTargetConstantPool(CPV, PtrVT, Align(4));
+
+  SDValue CPWrap = getAddrPCRel(CPAddr, DAG);
+  return CPWrap;
+}
+
+SDValue XtensaTargetLowering::LowerJumpTable(JumpTableSDNode *JT,
+                                             SelectionDAG &DAG) const {
+  SDLoc DL(JT);
+  EVT PtrVt = getPointerTy(DAG.getDataLayout());
+
+  // Create a constant pool entry for the callee address
+  XtensaConstantPoolValue *CPV =
+      XtensaConstantPoolJumpTable::Create(*DAG.getContext(), JT->getIndex());
+
+  // Get the address of the callee into a register
+  SDValue CPAddr = DAG.getTargetConstantPool(CPV, PtrVt, Align(4));
+  SDValue CPWrap = getAddrPCRel(CPAddr, DAG);
+
+  return CPWrap;
+}
+
+SDValue XtensaTargetLowering::LowerConstantPool(ConstantPoolSDNode *CP,
+                                                SelectionDAG &DAG) const {
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+
+  SDValue Result;
+  if (CP->isMachineConstantPoolEntry())
+    Result =
+        DAG.getTargetConstantPool(CP->getMachineCPVal(), PtrVT, CP->getAlign());
+  else
+    Result = DAG.getTargetConstantPool(CP->getConstVal(), PtrVT, CP->getAlign(),
+                                       CP->getOffset());
+
+  return getAddrPCRel(Result, DAG);
+}
+
 SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
@@ -577,6 +670,14 @@ SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
     return LowerImmediate(Op, DAG);
   case ISD::ConstantFP:
     return LowerImmediateFP(Op, DAG);
+  case ISD::GlobalAddress:
+    return LowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress:
+    return LowerBlockAddress(cast<BlockAddressSDNode>(Op), DAG);
+  case ISD::JumpTable:
+    return LowerJumpTable(cast<JumpTableSDNode>(Op), DAG);
+  case ISD::ConstantPool:
+    return LowerConstantPool(cast<ConstantPoolSDNode>(Op), DAG);
   default:
     llvm_unreachable("Unexpected node to lower");
   }

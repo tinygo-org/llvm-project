@@ -29,6 +29,16 @@ XtensaMCInstLower::XtensaMCInstLower(MCContext &ctx,
     : Ctx(ctx), Printer(asmPrinter) {}
 
 MCSymbol *
+XtensaMCInstLower::GetExternalSymbolSymbol(const MachineOperand &MO) const {
+  return Printer.GetExternalSymbolSymbol(MO.getSymbolName());
+}
+
+MCSymbol *
+XtensaMCInstLower::GetJumpTableSymbol(const MachineOperand &MO) const {
+  return Printer.GetJTISymbol(MO.getIndex());
+}
+
+MCSymbol *
 XtensaMCInstLower::GetConstantPoolIndexSymbol(const MachineOperand &MO) const {
   // Create a symbol for the name.
   return Printer.GetCPISymbol(MO.getIndex());
@@ -52,6 +62,13 @@ XtensaMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   case MachineOperand::MO_BlockAddress:
     Symbol = Printer.GetBlockAddressSymbol(MO.getBlockAddress());
     Offset += MO.getOffset();
+    break;
+  case MachineOperand::MO_ExternalSymbol:
+    Symbol = GetExternalSymbolSymbol(MO);
+    Offset += MO.getOffset();
+    break;
+  case MachineOperand::MO_JumpTableIndex:
+    Symbol = GetJumpTableSymbol(MO);
     break;
   case MachineOperand::MO_ConstantPoolIndex:
     Symbol = GetConstantPoolIndexSymbol(MO);
@@ -91,7 +108,12 @@ MCOperand XtensaMCInstLower::lowerOperand(const MachineOperand &MO,
     return MCOperand::createImm(MO.getImm() + Offset);
   case MachineOperand::MO_RegisterMask:
     break;
+  case MachineOperand::MO_MachineBasicBlock:
+  case MachineOperand::MO_GlobalAddress:
+  case MachineOperand::MO_ExternalSymbol:
+  case MachineOperand::MO_JumpTableIndex:
   case MachineOperand::MO_ConstantPoolIndex:
+  case MachineOperand::MO_BlockAddress:
     return LowerSymbolOperand(MO, MOTy, Offset);
   default:
     llvm_unreachable("unknown operand type");
