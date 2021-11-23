@@ -457,6 +457,11 @@ std::string tools::getCPUName(const ArgList &Args, const llvm::Triple &T,
   case llvm::Triple::wasm32:
   case llvm::Triple::wasm64:
     return std::string(getWebAssemblyTargetCPU(Args));
+
+  case llvm::Triple::xtensa:
+    if (const Arg *A = Args.getLastArg(options::OPT_mcpu_EQ))
+      return A->getValue();
+    return "";
   }
 }
 
