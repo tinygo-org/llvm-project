@@ -1040,9 +1040,11 @@ def UN_S  :  FCompare<0x01, 0x0b, "un.s",  Xtensa_cmpuo, 1>;
 
 def ABS_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
                     "abs.s\t$r, $s",
-                    [(set FPR:$r, (fabs FPR:$s))]> {
+                    [(set FPR:$r, (fabs FPR:$s))]>, Requires<[HasSingleFloat]> {
   let t = 0x01;
 }
+
+def : Pat<(fabs FPR:$s), (ABS_S $s)>;
 
 def ADDEXP_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
                        "addexp.s\t$r, $s", []>, Requires<[HasSingleFloat]> {
@@ -1078,7 +1080,7 @@ def DIVN_S : RRR_Inst<0x00, 0x0A, 0x07, (outs FPR:$r), (ins FPR:$s, FPR:$t),
                      "divn.s\t$r, $s, $t", []>, Requires<[HasSingleFloat]>;
 
 def FLOAT_S : RRR_Inst<0x00, 0x0A, 0x0c, (outs FPR:$r), (ins AR:$s, uimm4:$imm),
-                      "float.s\t$r, $s, $imm", []> {
+                      "float.s\t$r, $s, $imm", []>, Requires<[HasSingleFloat]> {
   bits<4> imm;
 
   let t = imm;
@@ -1107,6 +1109,9 @@ def MADD_S : RRR_Inst<0x00, 0x0A, 0x04, (outs FPR:$r), (ins FPR:$a, FPR:$s, FPR:
   let isReMaterializable = 0;
   let Constraints = "$r = $a";
 }
+
+def : Pat<(fma FPR:$r, FPR:$s, FPR:$t),
+          (MADD_S $r, $s, $t)>;
 
 def MKDADJ_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
                        "mkdadj.s\t$r, $s", []>, Requires<[HasSingleFloat]> {
@@ -1159,7 +1164,7 @@ def NEXP01_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
 
 def NEG_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
                     "neg.s\t$r, $s",
-                    [(set FPR:$r, (fneg FPR:$s))]> {
+                    [(set FPR:$r, (fneg FPR:$s))]>, Requires<[HasSingleFloat]> {
   let t = 0x06;
 }
 
@@ -1170,7 +1175,7 @@ def RECIP0_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
 
 def RFR : RRR_Inst<0x00, 0x0A, 0x0f, (outs AR:$r), (ins FPR:$s),
                   "rfr\t$r, $s",
-                  [(set AR:$r, (bitconvert FPR:$s))]> {
+                  [(set AR:$r, (bitconvert FPR:$s))]>, Requires<[HasSingleFloat]> {
   let t = 0x04;
 }
 
@@ -1192,16 +1197,16 @@ def SQRT0_S : RRR_Inst<0x00, 0x0A, 0x0F, (outs FPR:$r), (ins FPR:$s),
 }
 
 def TRUNC_S : RRR_Inst<0x00, 0x0A, 0x09, (outs AR:$r), (ins FPR:$s, uimm4:$imm),
-                      "trunc.s\t$r, $s, $imm", []> {
+                      "trunc.s\t$r, $s, $imm", []>, Requires<[HasSingleFloat]> {
   bits<4> imm;
 
   let t = imm;
 }
 
-def : Pat<(i32 (fp_to_sint FPR:$s)), (TRUNC_S FPR:$s, 0)>;
+def : Pat<(i32 (any_fp_to_sint FPR:$s)), (TRUNC_S FPR:$s, 0)>;
 
 def UFLOAT_S : RRR_Inst<0x00, 0x0A, 0x0D, (outs FPR:$r), (ins AR:$s, uimm4:$imm),
-                       "ufloat.s\t$r, $s, $imm", []> {
+                       "ufloat.s\t$r, $s, $imm", []>, Requires<[HasSingleFloat]> {
   bits<4> imm;
 
   let t = imm;
@@ -1210,22 +1215,22 @@ def UFLOAT_S : RRR_Inst<0x00, 0x0A, 0x0D, (outs FPR:$r), (ins AR:$s, uimm4:$imm)
 def : Pat<(f32 (uint_to_fp AR:$s)), (UFLOAT_S AR:$s, 0)>;
 
 def UTRUNC_S : RRR_Inst<0x00, 0x0A, 0x0e, (outs AR:$r), (ins FPR:$s, uimm4:$imm),
-                       "utrunc.s\t$r, $s, $imm", []> {
+                       "utrunc.s\t$r, $s, $imm", []>, Requires<[HasSingleFloat]> {
   bits<4> imm;
 
   let t = imm;
 }
 
-def : Pat<(i32 (fp_to_uint FPR:$s)), (UTRUNC_S FPR:$s, 0)>;
+def : Pat<(i32 (any_fp_to_uint FPR:$s)), (UTRUNC_S FPR:$s, 0)>;
 
 def WFR : RRR_Inst<0x00, 0x0A, 0x0f, (outs FPR:$r), (ins AR:$s),
                   "wfr\t$r, $s",
-                  [(set FPR:$r, (bitconvert AR:$s))]> {
+                  [(set FPR:$r, (bitconvert AR:$s))]>, Requires<[HasSingleFloat]> {
   let t = 0x05;
 }
 
 // FP select operations
-let usesCustomInserter = 1 in {
+let usesCustomInserter = 1, Predicates = [HasSingleFloat] in {
   def SELECT_CC_FP_INT : Pseudo<(outs AR:$dst), (ins FPR:$lhs, FPR:$rhs, AR:$t, AR:$f, i32imm:$cond),
                                "!select_cc_fp_int $dst, $lhs, $rhs, $t, $f, $cond",
                                [(set AR:$dst, (Xtensa_select_cc_fp FPR:$lhs, FPR:$rhs, AR:$t, AR:$f, imm:$cond))]>;
@@ -1238,7 +1243,7 @@ let usesCustomInserter = 1 in {
 }
 
 // FP brcc pesudo operation
-let usesCustomInserter = 1, isBranch = 1, isTerminator = 1, isBarrier = 1 in {
+let usesCustomInserter = 1, isBranch = 1, isTerminator = 1, isBarrier = 1, Predicates = [HasSingleFloat] in {
   def BRCC_FP : Pseudo<(outs), (ins i32imm:$cond, FPR:$lhs, FPR:$rhs, brtarget:$target),
                       "!brcc_fp $cond, $lhs, $rhs, $target",
                       [(Xtensa_brcc_fp imm:$cond, FPR:$lhs, FPR:$rhs, bb:$target)]>;
