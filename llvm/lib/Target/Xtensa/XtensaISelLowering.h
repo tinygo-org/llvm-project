@@ -63,6 +63,8 @@ enum {
   // WinABI Return
   RETW_FLAG,
 
+  RUR,
+
   // Selects between operand 0 and operand 1.  Operand 2 is the
   // mask of condition-code values for which operand 0 should be
   // chosen over operand 1; it has the same form as BR_CCMASK.
@@ -166,6 +168,8 @@ private:
   SDValue LowerImmediate(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerImmediateFP(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerGlobalTLSAddress(GlobalAddressSDNode *Node,
+                                SelectionDAG &DAG) const;
   SDValue LowerBlockAddress(BlockAddressSDNode *Node, SelectionDAG &DAG) const;
   SDValue LowerJumpTable(JumpTableSDNode *JT, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(ConstantPoolSDNode *CP, SelectionDAG &DAG) const;

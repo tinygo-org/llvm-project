@@ -67,7 +67,7 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   setStackPointerRegisterToSaveRestore(Xtensa::SP);
 
   setSchedulingPreference(Sched::RegPressure);
-  
+
   setBooleanContents(ZeroOrOneBooleanContent);
   setBooleanVectorContents(ZeroOrOneBooleanContent);
 
@@ -88,6 +88,7 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   // Handle the various types of symbolic address.
   setOperationAction(ISD::ConstantPool, PtrVT, Custom);
   setOperationAction(ISD::GlobalAddress, PtrVT, Custom);
+  setOperationAction(ISD::GlobalTLSAddress, PtrVT, Custom);
   setOperationAction(ISD::BlockAddress, PtrVT, Custom);
   setOperationAction(ISD::JumpTable, PtrVT, Custom);
 
@@ -1290,6 +1291,44 @@ SDValue XtensaTargetLowering::LowerGlobalAddress(SDValue Op,
   llvm_unreachable("invalid global addresses to lower");
 }
 
+SDValue XtensaTargetLowering::LowerGlobalTLSAddress(GlobalAddressSDNode *GA,
+                                                    SelectionDAG &DAG) const {
+  SDLoc DL(GA);
+  const GlobalValue *GV = GA->getGlobal();
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
+
+  if (DAG.getTarget().useEmulatedTLS())
+    return LowerToTLSEmulatedModel(GA, DAG);
+
+  TLSModel::Model model = getTargetMachine().getTLSModel(GV);
+
+  if (!Subtarget.hasTHREADPTR()) {
+    llvm_unreachable("only emulated TLS supported");
+  }
+
+  if ((model == TLSModel::LocalExec) || (model == TLSModel::InitialExec)) {
+    auto PtrVt = getPointerTy(DAG.getDataLayout());
+
+    bool Priv = GV->isPrivateLinkage(GV->getLinkage());
+    // Create a constant pool entry for the callee address
+    XtensaConstantPoolValue *CPV = XtensaConstantPoolSymbol::Create(
+        *DAG.getContext(), GV->getName().str().c_str() /* Sym */,
+        0 /* XtensaCLabelIndex */, Priv, XtensaCP::TPOFF);
+
+    // Get the address of the callee into a register
+    SDValue CPAddr = DAG.getTargetConstantPool(CPV, PtrVt, Align(4));
+    SDValue CPWrap = getAddrPCRel(CPAddr, DAG);
+
+    SDValue TPRegister = DAG.getRegister(Xtensa::THREADPTR, MVT::i32);
+    SDValue ThreadPointer =
+        DAG.getNode(XtensaISD::RUR, DL, MVT::i32, TPRegister);
+    return DAG.getNode(ISD::ADD, DL, PtrVT, ThreadPointer, CPWrap);
+  } else
+    llvm_unreachable("only local-exec and initial-exec TLS mode supported");
+
+  return SDValue();
+}
+
 SDValue XtensaTargetLowering::LowerBlockAddress(BlockAddressSDNode *Node,
                                                 SelectionDAG &DAG) const {
   const BlockAddress *BA = Node->getBlockAddress();
@@ -1621,6 +1660,8 @@ SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
     return LowerSELECT_CC(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
+  case ISD::GlobalTLSAddress:
+    return LowerGlobalTLSAddress(cast<GlobalAddressSDNode>(Op), DAG);
   case ISD::BlockAddress:
     return LowerBlockAddress(cast<BlockAddressSDNode>(Op), DAG);
   case ISD::JumpTable:
@@ -1677,6 +1718,7 @@ const char *XtensaTargetLowering::getTargetNodeName(unsigned Opcode) const {
     OPCODE(MSUB);
     OPCODE(MOVS);
     OPCODE(MOVSP);
+    OPCODE(RUR);
     OPCODE(SHL);
     OPCODE(SRA);
     OPCODE(SRL);
