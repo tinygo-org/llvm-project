@@ -2198,7 +2198,9 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       "s390x-suse-linux", "s390x-redhat-linux"};
 
   static const char *const XtensaLibDirs[] = {"/lib"};
-  static const char *const XtensaTriples[] = {"xtensa-unknown-elf"};
+  static const char *const XtensaTriples[] = {
+      "xtensa-unknown-elf", "xtensa-esp32-elf", "xtensa-esp32s2-elf",
+      "xtensa-esp32s3-elf"};
 
   using std::begin;
   using std::end;

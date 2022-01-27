@@ -10,7 +10,6 @@
 
 #include "Xtensa.h"
 #include "CommonArgs.h"
-#include "clang/Driver/InputInfo.h"
 #include "clang/Basic/Cuda.h"
 #include "clang/Config/config.h"
 #include "clang/Driver/Compilation.h"
@@ -31,58 +30,23 @@ using namespace llvm::opt;
 
 using tools::addMultilibFlag;
 
-XtensaGCCToolchainDetector::XtensaGCCToolchainDetector(
-    const Driver &D, const llvm::Triple &HostTriple,
-    const llvm::opt::ArgList &Args) {
-  std::string InstalledDir;
-  InstalledDir = D.getInstalledDir();
-  StringRef CPUName = XtensaToolChain::GetTargetCPUVersion(Args);
-  std::string Dir;
-  std::string ToolchainName;
-  std::string ToolchainDir;
-
-  if (CPUName.equals("esp32"))
-    ToolchainName = "xtensa-esp32-elf";
-  else if (CPUName.equals("esp32-s2"))
-    ToolchainName = "xtensa-esp32s2-elf";
-  else if (CPUName.equals("esp32-s3"))
-    ToolchainName = "xtensa-esp32s3-elf";
-  else if (CPUName.equals("esp8266"))
-    ToolchainName = "xtensa-lx106-elf";
-
-  Slash = llvm::sys::path::get_separator().str();
-
-  ToolchainDir = InstalledDir + Slash + "..";
-  Dir = ToolchainDir + Slash + "lib" + Slash + "gcc" + Slash + ToolchainName +
-        Slash;
-  GCCLibAndIncVersion = "";
-
-  if (D.getVFS().exists(Dir)) {
-    std::error_code EC;
-    for (llvm::vfs::directory_iterator LI = D.getVFS().dir_begin(Dir, EC), LE;
-         !EC && LI != LE; LI = LI.increment(EC)) {
-      StringRef VersionText = llvm::sys::path::filename(LI->path());
-      auto GCCVersion = Generic_GCC::GCCVersion::Parse(VersionText);
-      if (GCCVersion.Major == -1)
-        continue;
-      GCCLibAndIncVersion = GCCVersion.Text;
-    }
-    if (GCCLibAndIncVersion == "")
-      llvm_unreachable("Unexpected Xtensa GCC toolchain version");
-
-  } else {
-    // Unable to find Xtensa GCC toolchain;
-    GCCToolchainName = "";
-    return;
-  }
-  GCCToolchainDir = ToolchainDir;
-  GCCToolchainName = ToolchainName;
-}
-
 /// Xtensa Toolchain
 XtensaToolChain::XtensaToolChain(const Driver &D, const llvm::Triple &Triple,
                                  const ArgList &Args)
-    : Generic_ELF(D, Triple, Args), XtensaGCCToolchain(D, getTriple(), Args) {
+    : Generic_ELF(D, Triple, Args) {
+
+  GCCInstallation.init(Triple, Args);
+
+  if (!GCCInstallation.isValid()) {
+    llvm_unreachable("Unexpected Xtensa GCC toolchain version");
+  }
+
+  GCCLibAndIncVersion = GCCInstallation.getVersion().Text;
+  GCCToolchainName = GCCInstallation.getTriple().str();
+  SmallString<128> Path(GCCInstallation.getParentLibPath());
+  llvm::sys::path::append(Path, "..");
+  GCCToolchainDir = Path.c_str();
+
   for (auto *A : Args) {
     std::string Str = A->getAsString(Args);
     if (!Str.compare("-mlongcalls"))
@@ -137,17 +101,18 @@ XtensaToolChain::XtensaToolChain(const Driver &D, const llvm::Triple &Triple,
 
   Multilibs.select(Flags, SelectedMultilib);
 
-  const std::string Slash = XtensaGCCToolchain.Slash;
-  std::string Libs =
-      XtensaGCCToolchain.GCCToolchainDir + Slash + "lib" + Slash + "gcc" +
-      Slash + XtensaGCCToolchain.GCCToolchainName + Slash +
-      XtensaGCCToolchain.GCCLibAndIncVersion + SelectedMultilib.gccSuffix();
-  getFilePaths().push_back(Libs);
+  SmallString<128> Libs1(GCCToolchainDir);
+  llvm::sys::path::append(Libs1, "lib", "gcc", GCCToolchainName,
+                          GCCLibAndIncVersion);
+  if (!SelectedMultilib.gccSuffix().empty())
+    llvm::sys::path::append(Libs1, SelectedMultilib.gccSuffix());
+  getFilePaths().push_back(Libs1.c_str());
 
-  Libs = XtensaGCCToolchain.GCCToolchainDir + Slash +
-         XtensaGCCToolchain.GCCToolchainName + Slash + "lib" +
-         SelectedMultilib.gccSuffix();
-  getFilePaths().push_back(Libs);
+  SmallString<128> Libs2(GCCToolchainDir);
+  llvm::sys::path::append(Libs2, GCCToolchainName, "lib");
+  if (!SelectedMultilib.gccSuffix().empty())
+    llvm::sys::path::append(Libs2, SelectedMultilib.gccSuffix());
+  getFilePaths().push_back(Libs2.c_str());
 }
 
 Tool *XtensaToolChain::buildLinker() const {
@@ -164,17 +129,15 @@ void XtensaToolChain::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
       DriverArgs.hasArg(options::OPT_nostdlibinc))
     return;
 
-  if (!XtensaGCCToolchain.IsValid())
+  if (!GCCInstallation.isValid())
     return;
 
-  std::string Slash = XtensaGCCToolchain.Slash;
-
-  std::string Path1 = getDriver().ResourceDir.c_str() + Slash + "include";
-  std::string Path2 = XtensaGCCToolchain.GCCToolchainDir + Slash +
-                      XtensaGCCToolchain.GCCToolchainName + Slash +
-                      "sys-include";
-  std::string Path3 = XtensaGCCToolchain.GCCToolchainDir + Slash +
-                      XtensaGCCToolchain.GCCToolchainName + Slash + "include";
+  SmallString<128> Path1(getDriver().ResourceDir);
+  llvm::sys::path::append(Path1, "include");
+  SmallString<128> Path2(GCCToolchainDir);
+  llvm::sys::path::append(Path2, GCCToolchainName, "sys-include");
+  SmallString<128> Path3(GCCToolchainDir);
+  llvm::sys::path::append(Path3, GCCToolchainName, "include");
 
   const StringRef Paths[] = {Path1, Path2, Path3};
   addSystemIncludes(DriverArgs, CC1Args, Paths);
@@ -183,20 +146,20 @@ void XtensaToolChain::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
 void XtensaToolChain::addLibStdCxxIncludePaths(
     const llvm::opt::ArgList &DriverArgs,
     llvm::opt::ArgStringList &CC1Args) const {
-  if (!XtensaGCCToolchain.IsValid())
+  if (!GCCInstallation.isValid())
     return;
 
-  std::string Slash = XtensaGCCToolchain.Slash;
+  SmallString<128> BaseDir(GCCToolchainDir);
+  llvm::sys::path::append(BaseDir, GCCToolchainName, "include", "c++",
+                          GCCLibAndIncVersion);
+  SmallString<128> TargetDir(BaseDir);
+  llvm::sys::path::append(TargetDir, GCCToolchainName);
+  SmallString<128> TargetDirBackward(BaseDir);
+  llvm::sys::path::append(TargetDirBackward, "backward");
 
-  std::string BaseDir = XtensaGCCToolchain.GCCToolchainDir + Slash +
-                        XtensaGCCToolchain.GCCToolchainName + Slash +
-                        "include" + Slash + "c++" + Slash +
-                        XtensaGCCToolchain.GCCLibAndIncVersion;
-  std::string TargetDir = BaseDir + Slash + XtensaGCCToolchain.GCCToolchainName;
   addLibStdCXXIncludePaths(BaseDir, "", "", DriverArgs, CC1Args);
   addLibStdCXXIncludePaths(TargetDir, "", "", DriverArgs, CC1Args);
-  TargetDir = BaseDir + Slash + "backward";
-  addLibStdCXXIncludePaths(TargetDir, "", "", DriverArgs, CC1Args);
+  addLibStdCXXIncludePaths(TargetDirBackward, "", "", DriverArgs, CC1Args);
 }
 
 ToolChain::CXXStdlibType
@@ -228,7 +191,7 @@ void tools::Xtensa::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
   const auto &TC =
       static_cast<const toolchains::XtensaToolChain &>(getToolChain());
 
-  if (!TC.XtensaGCCToolchain.IsValid())
+  if (TC.GCCToolchainName == "")
     llvm_unreachable("Unable to find Xtensa GCC assembler");
 
   claimNoWarnArgs(Args);
@@ -255,13 +218,13 @@ void tools::Xtensa::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
   for (const auto &II : Inputs)
     CmdArgs.push_back(II.getFilename());
 
-  std::string Slash = TC.XtensaGCCToolchain.Slash;
+  SmallString<128> Asm(TC.GCCToolchainDir);
+  llvm::sys::path::append(Asm, "bin",
+                          TC.GCCToolchainName + "-" + getShortName());
 
-  const char *Asm =
-      Args.MakeArgString(getToolChain().getDriver().Dir + Slash +
-                         TC.XtensaGCCToolchain.GCCToolchainName + "-as");
-  C.addCommand(std::make_unique<Command>(
-      JA, *this, ResponseFileSupport::AtFileCurCP(), Asm, CmdArgs, Inputs));
+  C.addCommand(
+      std::make_unique<Command>(JA, *this, ResponseFileSupport::AtFileCurCP(),
+                                Args.MakeArgString(Asm), CmdArgs, Inputs));
 }
 
 void Xtensa::Linker::ConstructJob(Compilation &C, const JobAction &JA,
@@ -271,13 +234,13 @@ void Xtensa::Linker::ConstructJob(Compilation &C, const JobAction &JA,
                                   const char *LinkingOutput) const {
   const auto &TC =
       static_cast<const toolchains::XtensaToolChain &>(getToolChain());
-  std::string Slash = TC.XtensaGCCToolchain.Slash;
 
-  if (!TC.XtensaGCCToolchain.IsValid())
+  if (TC.GCCToolchainName == "")
     llvm_unreachable("Unable to find Xtensa GCC linker");
 
-  std::string Linker = getToolChain().getDriver().Dir + Slash +
-                       TC.XtensaGCCToolchain.GCCToolchainName + "-ld";
+  SmallString<128> Linker(TC.GCCToolchainDir);
+  llvm::sys::path::append(Linker, "bin",
+                          TC.GCCToolchainName + "-" + getShortName());
   ArgStringList CmdArgs;
 
   Args.AddAllArgs(CmdArgs, options::OPT_L);
