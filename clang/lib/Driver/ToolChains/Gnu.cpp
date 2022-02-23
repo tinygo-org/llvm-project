@@ -1676,6 +1676,42 @@ static void findRISCVMultilibs(const Driver &D,
     Result.Multilibs = RISCVMultilibs;
 }
 
+static void findXtensaMultilibs(const Driver &D,
+                               const llvm::Triple &TargetTriple, StringRef Path,
+                               const ArgList &Args, DetectedMultilibs &Result) {
+
+  MultilibSet XtensaMultilibs = MultilibSet();
+  bool IsESP32 = Args.getLastArgValue(options::OPT_mcpu_EQ, "esp32").equals("esp32");
+
+  XtensaMultilibs.push_back(Multilib());
+  if (IsESP32)
+    XtensaMultilibs.push_back(Multilib("esp32-psram", {}, {}, 2)
+                            .flag("+mfix-esp32-psram-cache-issue"));
+
+  XtensaMultilibs.push_back(
+      Multilib("no-rtti", {}, {}, 1).flag("+fno-rtti").flag("-frtti"));
+
+  if (IsESP32)
+    XtensaMultilibs.push_back(Multilib("esp32-psram/no-rtti", {}, {}, 3)
+                            .flag("+fno-rtti")
+                            .flag("-frtti")
+                            .flag("+mfix-esp32-psram-cache-issue"));
+
+  Multilib::flags_list Flags;
+  addMultilibFlag(
+      Args.hasFlag(options::OPT_frtti, options::OPT_fno_rtti, false), "frtti",
+      Flags);
+
+  if (IsESP32)
+    addMultilibFlag(Args.hasFlag(options::OPT_mfix_esp32_psram_cache_issue,
+                                 options::OPT_mfix_esp32_psram_cache_issue,
+                                 false),
+                    "mfix-esp32-psram-cache-issue", Flags);
+
+  if (XtensaMultilibs.select(Flags, Result.SelectedMultilib))
+    Result.Multilibs = XtensaMultilibs;
+}
+
 static bool findBiarchMultilibs(const Driver &D,
                                 const llvm::Triple &TargetTriple,
                                 StringRef Path, const ArgList &Args,
@@ -2504,6 +2540,8 @@ bool Generic_GCC::GCCInstallationDetector::ScanGCCForMultilibs(
     findMSP430Multilibs(D, TargetTriple, Path, Args, Detected);
   } else if (TargetArch == llvm::Triple::avr) {
     // AVR has no multilibs.
+  } else if (TargetArch == llvm::Triple::xtensa) {
+    findXtensaMultilibs(D, TargetTriple, Path, Args, Detected);
   } else if (!findBiarchMultilibs(D, TargetTriple, Path, Args,
                                   NeedsBiarchSuffix, Detected)) {
     return false;
