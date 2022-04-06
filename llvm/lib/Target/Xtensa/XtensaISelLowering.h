@@ -82,6 +82,19 @@ public:
   /// Returns the size of the platform's va_list object.
   unsigned getVaListSizeInBits(const DataLayout &DL) const override;
 
+  std::pair<unsigned, const TargetRegisterClass *>
+  getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
+                               StringRef Constraint, MVT VT) const override;
+  TargetLowering::ConstraintType
+  getConstraintType(StringRef Constraint) const override;
+  TargetLowering::ConstraintWeight
+  getSingleConstraintMatchWeight(AsmOperandInfo &info,
+                                 const char *constraint) const override;
+
+  void LowerAsmOperandForConstraint(SDValue Op, std::string &Constraint,
+                                    std::vector<SDValue> &Ops,
+                                    SelectionDAG &DAG) const override;
+
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
@@ -138,6 +151,14 @@ private:
   // Implement EmitInstrWithCustomInserter for individual operation types.
   MachineBasicBlock *emitSelectCC(MachineInstr &MI,
                                   MachineBasicBlock *BB) const;
+
+  unsigned getInlineAsmMemConstraint(StringRef ConstraintCode) const override {
+    if (ConstraintCode == "R")
+      return InlineAsm::Constraint_R;
+    else if (ConstraintCode == "ZC")
+      return InlineAsm::Constraint_ZC;
+    return TargetLowering::getInlineAsmMemConstraint(ConstraintCode);
+  }
 };
 
 } // end namespace llvm
