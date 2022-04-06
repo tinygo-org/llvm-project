@@ -2052,15 +2052,15 @@ XtensaTargetLowering::emitSelectCC(MachineInstr &MI,
       (MI.getOpcode() == Xtensa::SELECT_CC_FP_INT)) {
     int BrKind = 0;
     int CmpKind = 0;
-    MachineFunction *MF = BB->getParent();
-    MachineRegisterInfo &RegInfo = MF->getRegInfo();
-    const TargetRegisterClass *RC = &Xtensa::BRRegClass;
-    unsigned b = RegInfo.createVirtualRegister(RC);
+    unsigned b = Xtensa::B0;
+
     GetFPBranchKind(Cond.getImm(), BrKind, CmpKind);
     BuildMI(BB, DL, TII.get(CmpKind), b)
         .addReg(LHS.getReg())
         .addReg(RHS.getReg());
-    BuildMI(BB, DL, TII.get(BrKind)).addReg(b).addMBB(sinkMBB);
+    BuildMI(BB, DL, TII.get(BrKind))
+        .addReg(b, RegState::Kill)
+        .addMBB(sinkMBB);
   } else {
     bool BrInv = false;
     int BrKind = GetBranchKind(Cond.getImm(), BrInv);
@@ -3115,16 +3115,15 @@ MachineBasicBlock *XtensaTargetLowering::EmitInstrWithCustomInserter(
     MachineBasicBlock *TargetBB = MI.getOperand(3).getMBB();
     int BrKind = 0;
     int CmpKind = 0;
-    MachineFunction *MF = MBB->getParent();
-    MachineRegisterInfo &RegInfo = MF->getRegInfo();
-    const TargetRegisterClass *RC = &Xtensa::BRRegClass;
+    unsigned RegB = Xtensa::B0;
 
-    unsigned RegB = RegInfo.createVirtualRegister(RC);
     GetFPBranchKind(Cond.getImm(), BrKind, CmpKind);
     BuildMI(*MBB, MI, DL, TII.get(CmpKind), RegB)
         .addReg(LHS.getReg())
         .addReg(RHS.getReg());
-    BuildMI(*MBB, MI, DL, TII.get(BrKind)).addReg(RegB).addMBB(TargetBB);
+    BuildMI(*MBB, MI, DL, TII.get(BrKind))
+        .addReg(RegB, RegState::Kill)
+        .addMBB(TargetBB);
 
     MI.eraseFromParent();
     return MBB;
