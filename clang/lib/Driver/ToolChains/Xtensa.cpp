@@ -20,6 +20,7 @@
 #include "clang/Driver/Options.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Support/Path.h"
+#include "llvm/Support/TargetParser.h"
 #include "llvm/Support/VirtualFileSystem.h"
 #include <system_error>
 
@@ -43,9 +44,9 @@ XtensaGCCToolchainDetector::XtensaGCCToolchainDetector(
 
   if (CPUName.equals("esp32"))
     ToolchainName = "xtensa-esp32-elf";
-  else if (CPUName.equals("esp32-s2"))
+  else if (CPUName.equals("esp32-s2") || CPUName.equals("esp32s2"))
     ToolchainName = "xtensa-esp32s2-elf";
-  else if (CPUName.equals("esp32-s3"))
+  else if (CPUName.equals("esp32-s3") || CPUName.equals("esp32s3"))
     ToolchainName = "xtensa-esp32s3-elf";
   else if (CPUName.equals("esp8266"))
     ToolchainName = "xtensa-lx106-elf";
@@ -151,11 +152,11 @@ XtensaToolChain::XtensaToolChain(const Driver &D, const llvm::Triple &Triple,
 }
 
 Tool *XtensaToolChain::buildLinker() const {
-  return new tools::Xtensa::Linker(*this);
+  return new tools::xtensa::Linker(*this);
 }
 
 Tool *XtensaToolChain::buildAssembler() const {
-  return new tools::Xtensa::Assembler(*this);
+  return new tools::xtensa::Assembler(*this);
 }
 
 void XtensaToolChain::AddClangSystemIncludeArgs(const ArgList &DriverArgs,
@@ -220,7 +221,7 @@ const StringRef XtensaToolChain::GetTargetCPUVersion(const ArgList &Args) {
   return "esp32";
 }
 
-void tools::Xtensa::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
+void tools::xtensa::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
                                             const InputInfo &Output,
                                             const InputInfoList &Inputs,
                                             const ArgList &Args,
@@ -264,7 +265,7 @@ void tools::Xtensa::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
       JA, *this, ResponseFileSupport::AtFileCurCP(), Asm, CmdArgs, Inputs));
 }
 
-void Xtensa::Linker::ConstructJob(Compilation &C, const JobAction &JA,
+void xtensa::Linker::ConstructJob(Compilation &C, const JobAction &JA,
                                   const InputInfo &Output,
                                   const InputInfoList &Inputs,
                                   const ArgList &Args,
@@ -296,4 +297,32 @@ void Xtensa::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   C.addCommand(
       std::make_unique<Command>(JA, *this, ResponseFileSupport::AtFileCurCP(),
                                 Args.MakeArgString(Linker), CmdArgs, Inputs));
+}
+
+// Get features by CPU name
+static void getXtensaFeaturesFromMcpu(const Driver &D,
+                                      const llvm::opt::ArgList &Args,
+                                      const llvm::opt::Arg *A, StringRef Mcpu,
+                                      std::vector<StringRef> &Features) {
+  if (llvm::Xtensa::parseCPUKind(Mcpu) == llvm::Xtensa::CK_INVALID) {
+    D.Diag(clang::diag::err_drv_clang_unsupported) << A->getAsString(Args);
+  } else {
+    SmallVector<StringRef, 16> CPUFeatures;
+    llvm::Xtensa::getCPUFeatures(Mcpu, CPUFeatures);
+    for (auto &F : CPUFeatures) {
+      Features.push_back(F);
+    }
+  }
+}
+
+// Xtensa target features.
+void xtensa::getXtensaTargetFeatures(const Driver &D, const ArgList &Args,
+                                     std::vector<StringRef> &Features) {
+  if (Arg *A = Args.getLastArg(options::OPT_mcpu_EQ))
+    getXtensaFeaturesFromMcpu(D, Args, A, A->getValue(), Features);
+
+  // Now add any that the user explicitly requested on the command line,
+  // which may override the defaults.
+  handleTargetFeaturesGroup(Args, Features,
+                            options::OPT_m_xtensa_Features_Group);
 }
