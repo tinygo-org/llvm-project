@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "XtensaTargetMachine.h"
+#include "XtensaTargetObjectFile.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
@@ -43,6 +44,10 @@ static Reloc::Model getEffectiveRelocModel(bool JIT,
   return *RM;
 }
 
+static std::unique_ptr<TargetLoweringObjectFile> createTLOF() {
+  return std::make_unique<XtensaElfTargetObjectFile>();
+}
+
 XtensaTargetMachine::XtensaTargetMachine(const Target &T, const Triple &TT,
                                          StringRef CPU, StringRef FS,
                                          const TargetOptions &Options,
@@ -53,7 +58,7 @@ XtensaTargetMachine::XtensaTargetMachine(const Target &T, const Triple &TT,
     : LLVMTargetMachine(T, computeDataLayout(TT, CPU, Options, IsLittle), TT,
                         CPU, FS, Options, getEffectiveRelocModel(JIT, RM),
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
+      TLOF(createTLOF()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
   initAsmInfo();
 }
