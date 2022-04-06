@@ -44,7 +44,12 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   setBooleanVectorContents(ZeroOrOneBooleanContent);
 
   setMinFunctionAlignment(Align(4));
-  
+
+  setOperationAction(ISD::Constant, MVT::i32, Custom);
+  setOperationAction(ISD::Constant, MVT::i64, Expand);
+  setOperationAction(ISD::ConstantFP, MVT::f32, Custom);
+  setOperationAction(ISD::ConstantFP, MVT::f64, Expand);
+
   // No sign extend instructions for i1
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1, Promote);
@@ -54,6 +59,11 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
 
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
+}
+
+bool XtensaTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT,
+                                        bool ForCodeSize) const {
+  return false;
 }
 
 //===----------------------------------------------------------------------===//
@@ -297,9 +307,45 @@ XtensaTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   return DAG.getNode(XtensaISD::RET_FLAG, DL, MVT::Other, RetOps);
 }
 
+SDValue XtensaTargetLowering::LowerImmediate(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  const ConstantSDNode *CN = cast<ConstantSDNode>(Op);
+  SDLoc DL(CN);
+  APInt apval = CN->getAPIntValue();
+  int64_t value = apval.getSExtValue();
+  if (Op.getValueType() == MVT::i32) {
+    if (value > -2048 && value <= 2047)
+      return Op;
+    Type *Ty = Type::getInt32Ty(*DAG.getContext());
+    Constant *CV = ConstantInt::get(Ty, value);
+    SDValue CP = DAG.getConstantPool(CV, MVT::i32);
+    return CP;
+  }
+  return Op;
+}
+
+SDValue XtensaTargetLowering::LowerImmediateFP(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  const ConstantFPSDNode *CN = cast<ConstantFPSDNode>(Op);
+  SDLoc DL(CN);
+  APFloat apval = CN->getValueAPF();
+  int64_t value = FloatToBits(CN->getValueAPF().convertToFloat());
+  if (Op.getValueType() == MVT::f32) {
+    Type *Ty = Type::getInt32Ty(*DAG.getContext());
+    Constant *CV = ConstantInt::get(Ty, value);
+    SDValue CP = DAG.getConstantPool(CV, MVT::i32);
+    return DAG.getNode(ISD::BITCAST, DL, MVT::f32, CP);
+  }
+  return Op;
+}
+
 SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::Constant:
+    return LowerImmediate(Op, DAG);
+  case ISD::ConstantFP:
+    return LowerImmediateFP(Op, DAG);
   default:
     llvm_unreachable("Unexpected node to lower");
   }

@@ -36,6 +36,8 @@ public:
   explicit XtensaTargetLowering(const TargetMachine &TM,
                                 const XtensaSubtarget &STI);
 
+  bool isFPImmLegal(const APFloat &Imm, EVT VT,
+                    bool ForCodeSize) const override;
   const char *getTargetNodeName(unsigned Opcode) const override;
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
@@ -56,6 +58,9 @@ public:
 
 private:
   const XtensaSubtarget &Subtarget;
+
+  SDValue LowerImmediate(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerImmediateFP(SDValue Op, SelectionDAG &DAG) const;
 
   CCAssignFn *CCAssignFnForCall(CallingConv::ID CC, bool IsVarArg) const;
 };
