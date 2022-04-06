@@ -140,17 +140,33 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
     }
   }
 
-  setOperationAction(ISD::MUL, MVT::i32, Expand);
-  setOperationAction(ISD::MULHU, MVT::i32, Expand);
-  setOperationAction(ISD::MULHS, MVT::i32, Expand);
+  if (Subtarget.hasMul32())
+    setOperationAction(ISD::MUL, MVT::i32, Legal);
+  else
+    setOperationAction(ISD::MUL, MVT::i32, Expand);
+
+  if (Subtarget.hasMul32High()) {
+    setOperationAction(ISD::MULHU, MVT::i32, Legal);
+    setOperationAction(ISD::MULHS, MVT::i32, Legal);
+  } else {
+    setOperationAction(ISD::MULHU, MVT::i32, Expand);
+    setOperationAction(ISD::MULHS, MVT::i32, Expand);
+  }
   setOperationAction(ISD::MUL, MVT::i64, Expand);
   setOperationAction(ISD::MULHS, MVT::i64, Expand);
   setOperationAction(ISD::MULHU, MVT::i64, Expand);
 
-  setOperationAction(ISD::SDIV, MVT::i32, Expand);
-  setOperationAction(ISD::UDIV, MVT::i32, Expand);
-  setOperationAction(ISD::SREM, MVT::i32, Expand);
-  setOperationAction(ISD::UREM, MVT::i32, Expand);
+  if (Subtarget.hasDiv32()) {
+    setOperationAction(ISD::SDIV, MVT::i32, Legal);
+    setOperationAction(ISD::UDIV, MVT::i32, Legal);
+    setOperationAction(ISD::SREM, MVT::i32, Legal);
+    setOperationAction(ISD::UREM, MVT::i32, Legal);
+  } else {
+    setOperationAction(ISD::SDIV, MVT::i32, Expand);
+    setOperationAction(ISD::UDIV, MVT::i32, Expand);
+    setOperationAction(ISD::SREM, MVT::i32, Expand);
+    setOperationAction(ISD::UREM, MVT::i32, Expand);
+  }
 
   setOperationAction(ISD::SDIV, MVT::i64, Expand);
   setOperationAction(ISD::UDIV, MVT::i64, Expand);
