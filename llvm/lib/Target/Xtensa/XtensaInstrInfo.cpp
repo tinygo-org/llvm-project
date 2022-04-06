@@ -259,6 +259,7 @@ bool XtensaInstrInfo::reverseBranchCondition(
     return false;
 
   case Xtensa::LOOPEND:
+  case Xtensa::LOOPBR:
     return true;
 
   default:
@@ -296,6 +297,7 @@ XtensaInstrInfo::getBranchDestBlock(const MachineInstr &MI) const {
   case Xtensa::BNEZ:
   case Xtensa::BLTZ:
   case Xtensa::BGEZ:
+  case Xtensa::LOOPBR:
     return MI.getOperand(1).getMBB();
 
   case Xtensa::BT:
@@ -316,6 +318,7 @@ bool XtensaInstrInfo::isBranchOffsetInRange(unsigned BranchOp,
   case Xtensa::JX:
     return true;
   case Xtensa::LOOPEND:
+  case Xtensa::LOOPBR:
     BrOffset += 4;
     assert((BrOffset <= 0) && "Wrong hardware loop");
     return true;
@@ -631,6 +634,7 @@ unsigned XtensaInstrInfo::InsertBranchAtInst(MachineBasicBlock &MBB,
   case Xtensa::BNEZ:
   case Xtensa::BLTZ:
   case Xtensa::BGEZ:
+  case Xtensa::LOOPBR:
     MI = BuildMI(MBB, I, DL, get(BR_C)).addReg(Cond[1].getReg()).addMBB(TBB);
     break;
   case Xtensa::BT:
@@ -638,7 +642,7 @@ unsigned XtensaInstrInfo::InsertBranchAtInst(MachineBasicBlock &MBB,
     MI = BuildMI(MBB, I, DL, get(BR_C)).addReg(Cond[1].getReg()).addMBB(TBB);
     break;
   case Xtensa::LOOPEND:
-    MI = BuildMI(MBB, I, DL, get(BR_C)).addMBB(TBB);
+    MI = BuildMI(MBB, I, DL, get(Xtensa::LOOPEND)).addMBB(TBB);
     break;
   default:
     llvm_unreachable("Invalid branch type!");
@@ -727,6 +731,7 @@ bool XtensaInstrInfo::isBranch(const MachineBasicBlock::iterator &MI,
   case Xtensa::BNEZ:
   case Xtensa::BLTZ:
   case Xtensa::BGEZ:
+  case Xtensa::LOOPBR:
     Cond[0].setImm(OpCode);
     Target = &MI->getOperand(1);
     return true;
