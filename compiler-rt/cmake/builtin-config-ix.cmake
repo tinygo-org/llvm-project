@@ -51,6 +51,7 @@ set(SPARC sparc)
 set(SPARCV9 sparcv9)
 set(WASM32 wasm32)
 set(WASM64 wasm64)
+set(XTENSA xtensa)
 set(VE ve)
 
 if(APPLE)
@@ -63,7 +64,7 @@ set(ALL_BUILTIN_SUPPORTED_ARCH
   ${X86} ${X86_64} ${ARM32} ${ARM64}
   ${HEXAGON} ${MIPS32} ${MIPS64} ${PPC32} ${PPC64}
   ${RISCV32} ${RISCV64} ${SPARC} ${SPARCV9}
-  ${WASM32} ${WASM64} ${VE})
+  ${WASM32} ${WASM64} ${VE} ${XTENSA})
 
 include(CompilerRTUtils)
 include(CompilerRTDarwinUtils)
