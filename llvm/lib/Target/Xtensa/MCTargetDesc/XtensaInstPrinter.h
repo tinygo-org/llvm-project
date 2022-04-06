@@ -36,7 +36,7 @@ public:
   static void printOperand(const MCOperand &MO, raw_ostream &O);
 
   // Print an address
-  static void printAddress(unsigned Base, int64_t Disp, raw_ostream &O); 
+  static void printAddress(unsigned Base, int64_t Disp, raw_ostream &O);
 
   // Override MCInstPrinter.
   void printRegName(raw_ostream &O, unsigned RegNo) const override;
@@ -48,6 +48,7 @@ private:
   void printOperand(const MCInst *MI, int OpNum, raw_ostream &O);
   void printMemOperand(const MCInst *MI, int OpNUm, raw_ostream &O);
   void printBranchTarget(const MCInst *MI, int OpNum, raw_ostream &O);
+  void printLoopTarget(const MCInst *MI, int OpNum, raw_ostream &O);
   void printJumpTarget(const MCInst *MI, int OpNum, raw_ostream &O);
   void printCallOperand(const MCInst *MI, int OpNum, raw_ostream &O);
   void printL32RTarget(const MCInst *MI, int OpNum, raw_ostream &O);
