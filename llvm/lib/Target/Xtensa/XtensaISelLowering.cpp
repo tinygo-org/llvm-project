@@ -768,6 +768,26 @@ SDValue XtensaTargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
                      TargetCC);
 }
 
+SDValue XtensaTargetLowering::LowerRETURNADDR(SDValue Op,
+                                              SelectionDAG &DAG) const {
+  // check the depth
+  // TODO: xtensa-gcc can handle this, by navigating through the stack, we
+  // should be able to do this too
+  assert((cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue() == 0) &&
+         "Return address can be determined only for current frame.");
+
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  MVT VT = Op.getSimpleValueType();
+  unsigned RA = Xtensa::A0;
+  MFI.setReturnAddressIsTaken(true);
+
+  // Return RA, which contains the return address. Mark it an implicit
+  // live-in.
+  unsigned Reg = MF.addLiveIn(RA, getRegClassFor(VT));
+  return DAG.getCopyFromReg(DAG.getEntryNode(), SDLoc(Op), Reg, VT);
+}
+
 SDValue XtensaTargetLowering::LowerImmediate(SDValue Op,
                                              SelectionDAG &DAG) const {
   const ConstantSDNode *CN = cast<ConstantSDNode>(Op);
@@ -919,6 +939,23 @@ SDValue XtensaTargetLowering::LowerSTACKRESTORE(SDValue Op,
                                                 SelectionDAG &DAG) const {
   unsigned sp = Xtensa::SP;
   return DAG.getCopyToReg(Op.getOperand(0), SDLoc(Op), sp, Op.getOperand(1));
+}
+
+SDValue XtensaTargetLowering::LowerFRAMEADDR(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  // check the depth
+  assert((cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue() == 0) &&
+         "Frame address can only be determined for current frame.");
+
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = DAG.getMachineFunction().getFrameInfo();
+  MFI.setFrameAddressIsTaken(true);
+  EVT VT = Op.getValueType();
+  SDLoc DL(Op);
+
+  unsigned FrameReg = Subtarget.getRegisterInfo()->getFrameRegister(MF);
+  SDValue FrameAddr = DAG.getCopyFromReg(DAG.getEntryNode(), DL, FrameReg, VT);
+  return FrameAddr;
 }
 
 SDValue XtensaTargetLowering::LowerDYNAMIC_STACKALLOC(SDValue Op,
@@ -1129,6 +1166,8 @@ SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
     return LowerImmediate(Op, DAG);
   case ISD::ConstantFP:
     return LowerImmediateFP(Op, DAG);
+  case ISD::RETURNADDR:
+    return LowerRETURNADDR(Op, DAG);
   case ISD::SETCC:
     return LowerSETCC(Op, DAG);
   case ISD::SELECT_CC:
@@ -1145,6 +1184,8 @@ SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
     return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:
     return LowerSTACKRESTORE(Op, DAG);
+  case ISD::FRAMEADDR:
+    return LowerFRAMEADDR(Op, DAG);
   case ISD::DYNAMIC_STACKALLOC:
     return LowerDYNAMIC_STACKALLOC(Op, DAG);
   case ISD::VASTART:
