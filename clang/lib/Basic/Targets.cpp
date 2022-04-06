@@ -38,6 +38,7 @@
 #include "Targets/WebAssembly.h"
 #include "Targets/X86.h"
 #include "Targets/XCore.h"
+#include "Targets/Xtensa.h"
 #include "clang/Basic/Diagnostic.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Triple.h"
@@ -656,6 +657,9 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
 
   case llvm::Triple::ve:
     return new LinuxTargetInfo<VETargetInfo>(Triple, Opts);
+
+  case llvm::Triple::xtensa :
+      return new XtensaTargetInfo(Triple, Opts);
   }
 }
 } // namespace targets
