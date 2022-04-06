@@ -14,6 +14,7 @@
 
 include "XtensaInstrFormats.td"
 include "XtensaOperands.td"
+include "XtensaOperators.td"
 
 //===----------------------------------------------------------------------===//
 // Arithmetic & Logical instructions
@@ -426,7 +427,7 @@ let isReturn = 1, isTerminator = 1,
     isBarrier = 1, Uses = [A0] in {
 
   def RET : CALLX_Inst<0x00, 0x00, 0x00, (outs), (ins),
-                      "ret", []> {
+                      "ret", [(Xtensa_retflag)]> {
     let m = 0x2;
     let n = 0x0;
     let s = 0;
