@@ -95,6 +95,10 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   setOperationAction(ISD::SETCC, MVT::i32,
                      Custom); // folds into brcond
   setOperationAction(ISD::SETCC, MVT::i64, Expand);
+  
+  // Expand jump table branches as address arithmetic followed by an
+  // indirect jump.
+  setOperationAction(ISD::BR_JT, MVT::Other, Custom);
 
   // make BRCOND legal, its actually only legal for a subset of conds
   setOperationAction(ISD::BRCOND, MVT::Other, Legal);
@@ -845,6 +849,35 @@ SDValue XtensaTargetLowering::LowerBlockAddress(BlockAddressSDNode *Node,
   return CPWrap;
 }
 
+SDValue XtensaTargetLowering::LowerBR_JT(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Table = Op.getOperand(1);
+  SDValue Index = Op.getOperand(2);
+  SDLoc DL(Op);
+  JumpTableSDNode *JT = cast<JumpTableSDNode>(Table);
+  MachineFunction &MF = DAG.getMachineFunction();
+  const MachineJumpTableInfo *MJTI = MF.getJumpTableInfo();
+
+  SDValue TargetJT = DAG.getTargetJumpTable(JT->getIndex(), MVT::i32);
+
+  const DataLayout &TD = DAG.getDataLayout();
+  EVT PTy = getPointerTy(TD);
+
+  unsigned EntrySize = MJTI->getEntrySize(TD);
+
+  Index = DAG.getNode(ISD::MUL, DL, Index.getValueType(), Index,
+                      DAG.getConstant(EntrySize, DL, Index.getValueType()));
+  SDValue Addr = DAG.getNode(ISD::ADD, DL, Index.getValueType(), Index, Table);
+
+  EVT MemVT = EVT::getIntegerVT(*DAG.getContext(), EntrySize * 8);
+  SDValue LD = DAG.getExtLoad(ISD::SEXTLOAD, DL, PTy, Chain, Addr,
+                              MachinePointerInfo::getJumpTable(MF), MemVT);
+  Addr = LD;
+
+  return DAG.getNode(XtensaISD::BR_JT, DL, MVT::Other, LD.getValue(1), Addr,
+                     TargetJT);
+}
+
 SDValue XtensaTargetLowering::LowerJumpTable(JumpTableSDNode *JT,
                                              SelectionDAG &DAG) const {
   SDLoc DL(JT);
@@ -1090,6 +1123,8 @@ SDValue XtensaTargetLowering::LowerShiftRightParts(SDValue Op,
 SDValue XtensaTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::BR_JT:
+    return LowerBR_JT(Op, DAG);
   case ISD::Constant:
     return LowerImmediate(Op, DAG);
   case ISD::ConstantFP:
@@ -1137,6 +1172,7 @@ const char *XtensaTargetLowering::getTargetNodeName(unsigned Opcode) const {
     OPCODE(PCREL_WRAPPER);
     OPCODE(SELECT);
     OPCODE(SELECT_CC);
+    OPCODE(BR_JT);
     OPCODE(SHL);
     OPCODE(SRA);
     OPCODE(SRL);

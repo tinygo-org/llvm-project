@@ -23,6 +23,8 @@ def SDT_XtensaSelectCC            : SDTypeProfile<1, 5,
                                                  [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<2, 3>,
                                                   SDTCisVT<5, i32>]>;
+def SDT_XtensaBrJT                : SDTypeProfile<0, 2,
+                                                 [SDTCisPtrTy<0>, SDTCisVT<1, i32>]>;
 
 def SDT_XtensaSHL                 : SDTypeProfile<1, 1, [SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
 def SDT_XtensaSRA                 : SDTypeProfile<1, 1, [SDTCisVT<0, i32>, SDTCisVT<1, i32>]>;
@@ -61,3 +63,5 @@ def Xtensa_srl: SDNode<"XtensaISD::SRL", SDT_XtensaSRL, [SDNPInGlue]>;
 def Xtensa_src: SDNode<"XtensaISD::SRC", SDT_XtensaSRC, [SDNPInGlue]>;
 def Xtensa_ssl: SDNode<"XtensaISD::SSL", SDT_XtensaSSL, [SDNPOutGlue]>;
 def Xtensa_ssr: SDNode<"XtensaISD::SSR", SDT_XtensaSSR, [SDNPOutGlue]>;
+
+def Xtensa_brjt: SDNode<"XtensaISD::BR_JT", SDT_XtensaBrJT, [SDNPHasChain]>;

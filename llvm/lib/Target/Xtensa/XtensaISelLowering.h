@@ -25,6 +25,8 @@ namespace XtensaISD {
 enum {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
 
+  BR_JT,
+
   // Calls a function.  Operand 0 is the chain operand and operand 1
   // is the target address.  The arguments start at operand 2.
   // There is an optional glue operand at the end.
@@ -106,6 +108,7 @@ public:
 private:
   const XtensaSubtarget &Subtarget;
 
+  SDValue LowerBR_JT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerImmediate(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerImmediateFP(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
