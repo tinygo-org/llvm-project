@@ -191,6 +191,10 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
 
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
+
+  if (Subtarget.hasBoolean()) {
+    addRegisterClass(MVT::i1, &Xtensa::BRRegClass);
+  }
 }
 
 bool XtensaTargetLowering::isOffsetFoldingLegal(
