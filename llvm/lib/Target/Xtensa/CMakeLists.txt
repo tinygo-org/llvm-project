@@ -24,6 +24,7 @@ add_llvm_target(XtensaCodeGen
   XtensaMachineFunctionInfo.cpp
   XtensaMCInstLower.cpp
   XtensaRegisterInfo.cpp
+  XtensaSizeReductionPass.cpp
   XtensaSubtarget.cpp
   XtensaTargetMachine.cpp
 
