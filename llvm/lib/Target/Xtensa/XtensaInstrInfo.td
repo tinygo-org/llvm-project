@@ -105,33 +105,39 @@ def MOVGEZ : RRR_Inst<0x00, 0x03, 0x0B, (outs AR:$r), (ins AR:$s, AR:$t),
 
 let Uses = [SAR] in {
   def SLL : RRR_Inst<0x00, 0x01, 0x0A, (outs AR:$r), (ins AR:$s),
-                    "sll\t$r, $s", []> {
+                   "sll\t$r, $s",
+                   [(set AR:$r, (Xtensa_shl AR:$s))]> {
     let t = 0x00;
   }
 
   def SRA : RRR_Inst<0x00, 0x01, 0x0B, (outs AR:$r), (ins AR:$t),
-                    "sra\t$r, $t", []> {
+                    "sra\t$r, $t",
+                    [(set AR:$r, (Xtensa_sra AR:$t))]> {
     let s = 0x00;
   }
 
   def SRC : RRR_Inst<0x00, 0x01, 0x08, (outs AR:$r), (ins AR:$s, AR:$t),
-                    "src\t$r, $s, $t", []>;
+                    "src\t$r, $s, $t",
+                    [(set AR:$r, (Xtensa_src AR:$s, AR:$t))]>;
 
   def SRL : RRR_Inst<0x00, 0x01, 0x09, (outs AR:$r), (ins AR:$t),
-                    "srl\t$r, $t", []> {
+                    "srl\t$r, $t",
+                    [(set AR:$r, (Xtensa_srl AR:$t))]> {
     let s = 0x00;
   }
 }
 
 let Defs = [SAR] in {
   def SSL : RRR_Inst<0x00, 0x00, 0x04, (outs), (ins AR:$s),
-                    "ssl\t$s", []> {
+                    "ssl\t$s",
+                    [(Xtensa_ssl AR:$s)]> {
     let r = 0x01;
     let t = 0x00;
   }
 
   def SSR : RRR_Inst<0x00, 0x00, 0x04, (outs), (ins AR:$s),
-                    "ssr\t$s", []> {
+                    "ssr\t$s", 
+                    [(Xtensa_ssr AR:$s)]> {
     let r = 0x00;
     let t = 0x00;
   }
@@ -187,6 +193,22 @@ def SSAI : RRR_Inst<0x00, 0x00, 0x04, (outs), (ins uimm5:$imm),
   let s = imm{3-0};
   let t{3-1} = 0;
   let t{0} = imm{4};
+}
+
+// Shift Pseudo instructions:
+// SSL/SSR + Shift combination
+let usesCustomInserter = 1 in {
+  def SLL_P : Pseudo<(outs AR:$r), (ins AR:$s, AR:$sa),
+                    "# SLL_P $r, $s, $sa",
+                    [(set AR:$r, (shl AR:$s, AR:$sa))]>;
+ 
+  def SRA_P : Pseudo<(outs AR:$r), (ins AR:$t, AR:$sa),
+                    "# SRA_P $r, $t, $sa",
+                    [(set AR:$r, (sra AR:$t, AR:$sa))]>;
+
+  def SRL_P : Pseudo<(outs AR:$r), (ins AR:$t, AR:$sa),
+                    "# SRL_P $r, $t, $sa",
+                    [(set AR:$r, (srl AR:$t, AR:$sa))]>;
 }
 
 //===----------------------------------------------------------------------===//
