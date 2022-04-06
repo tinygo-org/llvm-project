@@ -793,6 +793,7 @@ SDValue XtensaTargetLowering::LowerFormalArguments(
       // so load argument from A8
       if (Subtarget.isWinABI() && (VA.getLocReg() == FrameReg)) {
         Reg = MF.addLiveIn(Xtensa::A8, RC);
+        XtensaFI->setSaveFrameRegister();
       } else {
         Reg = MF.addLiveIn(VA.getLocReg(), RC);
       }
@@ -887,6 +888,7 @@ SDValue XtensaTargetLowering::LowerFormalArguments(
       // so load argument from A8
       if (ArgRegs[I] == FrameReg) {
         RegInfo.addLiveIn(Xtensa::A8, Reg);
+        XtensaFI->setSaveFrameRegister();
       } else {
         RegInfo.addLiveIn(ArgRegs[I], Reg);
       }

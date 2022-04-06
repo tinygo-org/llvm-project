@@ -27,6 +27,7 @@ class XtensaFunctionInfo : public MachineFunctionInfo {
   unsigned VarArgsFirstGPR;
   int VarArgsStackOffset;
   unsigned VarArgsFrameIndex;
+  bool SaveFrameRegister = false;
 
 public:
   explicit XtensaFunctionInfo(MachineFunction &MF)
@@ -44,6 +45,9 @@ public:
   // Get and set the frame index of the first stack vararg.
   unsigned getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
   void setVarArgsFrameIndex(unsigned FI) { VarArgsFrameIndex = FI; }
+
+  bool isSaveFrameRegister() const { return SaveFrameRegister; }
+  void setSaveFrameRegister() { SaveFrameRegister = true; }
 
   // TODO: large frame size definition should be specified more precisely
   bool isLargeFrame() {
