@@ -43,7 +43,6 @@ public:
                        const char *ExtraCode, raw_ostream &O) override;
   bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
                              const char *ExtraCode, raw_ostream &OS) override;
-  void printMemOperand(const MachineInstr *MI, int opNum, raw_ostream &OS);
 };
 } // end namespace llvm
 
