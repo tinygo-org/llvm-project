@@ -75,8 +75,25 @@ static DecodeStatus DecodeARRegisterClass(MCInst &Inst, uint64_t RegNo,
   return MCDisassembler::Success;
 }
 
+static const unsigned BRDecoderTable[] = {
+    Xtensa::B0,  Xtensa::B1,  Xtensa::B2,  Xtensa::B3, Xtensa::B4,  Xtensa::B5,
+    Xtensa::B6,  Xtensa::B7,  Xtensa::B8,  Xtensa::B9, Xtensa::B10, Xtensa::B11,
+    Xtensa::B12, Xtensa::B13, Xtensa::B14, Xtensa::B15};
+
+static DecodeStatus DecodeBRRegisterClass(MCInst &Inst, uint64_t RegNo,
+                                          uint64_t Address,
+                                          const void *Decoder) {
+  if (RegNo >= std::size(BRDecoderTable))
+    return MCDisassembler::Fail;
+
+  unsigned Reg = BRDecoderTable[RegNo];
+  Inst.addOperand(MCOperand::createReg(Reg));
+  return MCDisassembler::Success;
+}
+
 static const unsigned SRDecoderTable[] = {
-    Xtensa::SAR, 3, Xtensa::WINDOWBASE, 72, Xtensa::WINDOWSTART, 73};
+    Xtensa::SAR,         3,  Xtensa::BREG,        4,
+    Xtensa ::WINDOWBASE, 72, Xtensa::WINDOWSTART, 73};
 
 static DecodeStatus DecodeSRRegisterClass(MCInst &Inst, uint64_t RegNo,
                                           uint64_t Address,
