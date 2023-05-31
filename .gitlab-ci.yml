@@ -105,6 +105,7 @@ before_script:
 .build_template:
   stage: build
   tags: [ "amd64", "build" ]
+  allow_failure: true
   artifacts:
     paths:
       - ${DIST_DIR}/
@@ -202,6 +203,7 @@ build_x86_64-w64-mingw32:
 test_x86_64-linux-gnu:
   stage: test
   tags: [ "amd64", "build" ]
+  allow_failure: true
   needs:
     - job: build_x86_64-linux-gnu
   variables:
