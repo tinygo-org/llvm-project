@@ -433,6 +433,8 @@ def BBCI : RRI8_Inst<0x07, (outs),
   let imm8 = target;
 }
 
+def : InstAlias<"bbci.l\t$s, $imm, $target", (BBCI AR:$s, uimm5:$imm, brtarget:$target)>;
+
 def BBSI : RRI8_Inst<0x07, (outs),
                     (ins AR:$s, uimm5:$imm, brtarget:$target),
                     "bbsi\t$s, $imm, $target", []> {
@@ -444,6 +446,8 @@ def BBSI : RRI8_Inst<0x07, (outs),
   let t{3-0} = imm{3-0};
   let imm8 = target;
 }
+
+def : InstAlias<"bbsi.l\t$s, $imm, $target", (BBSI AR:$s, uimm5:$imm, brtarget:$target)>;
 
 def : Pat<(brcc SETGT, AR:$s, AR:$t, bb:$target),
           (BLT AR:$t, AR:$s, bb:$target)>;
