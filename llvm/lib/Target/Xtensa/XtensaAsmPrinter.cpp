@@ -122,22 +122,7 @@ void XtensaAsmPrinter::emitMachineConstantPoolEntry(
         const MCSymbol &Sym = SRE.getSymbol();
         str += Sym.getName();
       } else {
-        unsigned NumElements;
-        if (isa<VectorType>(Ty))
-          NumElements = (cast<FixedVectorType>(Ty))->getNumElements();
-        else
-          NumElements = Ty->getArrayNumElements();
-
-        for (unsigned I = 0; I < NumElements; I++) {
-          const Constant *CAE = C->getAggregateElement(I);
-          if (I > 0)
-            str += ", ";
-          if (const auto *CFP = dyn_cast<ConstantFP>(CAE)) {
-            str += toString(CFP->getValueAPF().bitcastToAPInt(), 10, true);
-          } else if (const auto *CI = dyn_cast<ConstantInt>(CAE)) {
-            str += toString(CI->getValue(), 10, true);
-          }
-        }
+        llvm_unreachable("unexpected constant pool entry type");
       }
 
       OutStreamer->emitRawText(StringRef(str));
