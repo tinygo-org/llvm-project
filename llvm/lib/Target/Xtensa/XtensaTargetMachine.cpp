@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "XtensaMachineFunctionInfo.h"
 #include "XtensaTargetMachine.h"
 #include "TargetInfo/XtensaTargetInfo.h"
 #include "llvm/CodeGen/Passes.h"
@@ -68,6 +69,12 @@ XtensaTargetMachine::XtensaTargetMachine(const Target &T, const Triple &TT,
 const XtensaSubtarget *
 XtensaTargetMachine::getSubtargetImpl(const Function &F) const {
   return &Subtarget;
+}
+
+MachineFunctionInfo *XtensaTargetMachine::createMachineFunctionInfo(
+    BumpPtrAllocator &Allocator, const Function &F,
+    const TargetSubtargetInfo *STI) const {
+  return XtensaFunctionInfo::create<XtensaFunctionInfo>(Allocator, F, STI);
 }
 
 namespace {
