@@ -1,4 +1,4 @@
-; RUN: llc -O1 -mtriple=xtensa -mcpu=esp32 %s -o - | FileCheck %s
+; RUN: llc -O1 -mtriple=xtensa -mcpu=esp32 -disable-xtensa-hwloops=false %s -o - | FileCheck %s
 
 ; Function Attrs: nounwind optsize
 define i32 @test_hwloop(i32 %a, i32 %b, i32 %n) local_unnamed_addr #1 {
@@ -29,7 +29,7 @@ for.body:                                         ; preds = %entry, %for.body
 ; CHECK:	#APP
 ; CHECK:	#NO_APP
 ; CHECK:	addi.n	a4, a4, -1
-; CHECK:	beqz	a4, .LBB0_6
+; CHECK:	beqz  a4, .LBB0_6
 ; CHECK:.LBB0_4: 
 ; CHECK:	bge	a8, a2, .LBB0_2
 

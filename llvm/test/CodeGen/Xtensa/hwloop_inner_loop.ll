@@ -1,4 +1,4 @@
-; RUN: llc -O1 -mtriple=xtensa -mcpu=esp32 %s -o - | FileCheck %s
+; RUN: llc -O1 -mtriple=xtensa -mcpu=esp32 -disable-xtensa-hwloops=false %s -o - | FileCheck %s
 
 
 ; Function Attrs: norecurse nounwind optsize readnone
