@@ -33,6 +33,7 @@ XtensaSubtarget::initializeSubtargetDependencies(StringRef CPU, StringRef FS) {
   }
 
   HasDensity = false;
+  HasSingleFloat = false;
   HasWindowed = false;
   HasBoolean = false;
 

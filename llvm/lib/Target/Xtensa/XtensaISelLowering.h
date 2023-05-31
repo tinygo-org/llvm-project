@@ -34,6 +34,21 @@ enum {
   // WinABI Call version
   CALLW,
 
+  // Floating point unordered compare conditions
+  CMPUEQ,
+  CMPULE,
+  CMPULT,
+  CMPUO,
+  // Floating point compare conditions
+  CMPOEQ,
+  CMPOLE,
+  CMPOLT,
+  // FP multipy-add/sub
+  MADD,
+  MSUB,
+  // FP move
+  MOVS,
+
   MOVSP,
 
   // Wraps a TargetGlobalAddress that should be loaded using PC-relative
