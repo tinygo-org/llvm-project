@@ -217,56 +217,76 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   for (unsigned I = MVT::FIRST_FP_VALUETYPE; I <= MVT::LAST_FP_VALUETYPE; ++I) {
     MVT VT = MVT::SimpleValueType(I);
     if (isTypeLegal(VT)) {
-      // We can use FI for FRINT.
-      // setOperationAction(ISD::FRINT, VT, Legal);
       if (VT.getSizeInBits() == 32 && Subtarget.hasSingleFloat()) {
+        setOperationAction(ISD::FABS, VT, Legal);
         setOperationAction(ISD::FADD, VT, Legal);
-        setOperationAction(ISD::FSUB, VT, Legal);
+        setOperationAction(ISD::FMA, VT, Legal);
         setOperationAction(ISD::FMUL, VT, Legal);
-        setOperationAction(ISD::FDIV, VT, Expand);
+        setOperationAction(ISD::FNEG, VT, Legal);
+        setOperationAction(ISD::FSUB, VT, Legal);
       } else {
+        setOperationAction(ISD::FABS, VT, Expand);
         setOperationAction(ISD::FADD, VT, Expand);
-        setOperationAction(ISD::FSUB, VT, Expand);
+        setOperationAction(ISD::FMA, VT, Expand);
         setOperationAction(ISD::FMUL, VT, Expand);
-        setOperationAction(ISD::FDIV, VT, Expand);
+        setOperationAction(ISD::FNEG, VT, Expand);
+        setOperationAction(ISD::FSUB, VT, Expand);
       }
 
-      // TODO: once implemented in InstrInfo uncomment
-      setOperationAction(ISD::FSQRT, VT, Expand);
-
       // No special instructions for these.
-      setOperationAction(ISD::FSIN, VT, Expand);
+      setOperationAction(ISD::FCBRT, VT, Expand);
+      setOperationAction(ISD::FCEIL, VT, Expand);
+      setOperationAction(ISD::FCOPYSIGN, VT, Expand);
       setOperationAction(ISD::FCOS, VT, Expand);
+      setOperationAction(ISD::FDIV, VT, Expand);
+      setOperationAction(ISD::FEXP, VT, Expand);
+      setOperationAction(ISD::FEXP2, VT, Expand);
+      setOperationAction(ISD::FFLOOR, VT, Expand);
+      setOperationAction(ISD::FLOG, VT, Expand);
+      setOperationAction(ISD::FLOG2, VT, Expand);
+      setOperationAction(ISD::FLOG10, VT, Expand);
+      setOperationAction(ISD::FMAXIMUM, VT, Expand);
+      setOperationAction(ISD::FMINIMUM, VT, Expand);
+      setOperationAction(ISD::FMAXNUM, VT, Expand);
+      setOperationAction(ISD::FMINNUM, VT, Expand);
+      setOperationAction(ISD::FNEARBYINT, VT, Expand);
+      setOperationAction(ISD::FPOW, VT, Expand);
+      setOperationAction(ISD::FPOWI, VT, Expand);
       setOperationAction(ISD::FREM, VT, Expand);
-      setOperationAction(ISD::FABS, VT, Expand);
+      setOperationAction(ISD::FRINT, VT, Expand);
+      setOperationAction(ISD::FROUND, VT, Expand);
+      setOperationAction(ISD::FSIN, VT, Expand);
+      setOperationAction(ISD::FSINCOS, VT, Expand);
+      setOperationAction(ISD::FSQRT, VT, Expand);
+      setOperationAction(ISD::FTRUNC, VT, Expand);
+      setOperationAction(ISD::LLRINT, VT, Expand);
+      setOperationAction(ISD::LLROUND, VT, Expand);
+      setOperationAction(ISD::LRINT, VT, Expand);
+      setOperationAction(ISD::LROUND, VT, Expand);
     }
   }
 
-  // Handle floating-point types.
   if (Subtarget.hasSingleFloat()) {
-    setOperationAction(ISD::FMA, MVT::f32, Legal);
     setOperationAction(ISD::BITCAST, MVT::i32, Legal);
     setOperationAction(ISD::BITCAST, MVT::f32, Legal);
     setOperationAction(ISD::UINT_TO_FP, MVT::i32, Legal);
     setOperationAction(ISD::SINT_TO_FP, MVT::i32, Legal);
     setOperationAction(ISD::FP_TO_UINT, MVT::i32, Legal);
     setOperationAction(ISD::FP_TO_SINT, MVT::i32, Legal);
-    setOperationAction(ISD::FCOPYSIGN, MVT::f32, Expand);
   } else {
-    setOperationAction(ISD::FMA, MVT::f32, Expand);
-    setOperationAction(ISD::SETCC, MVT::f32, Expand);
     setOperationAction(ISD::BITCAST, MVT::i32, Expand);
     setOperationAction(ISD::BITCAST, MVT::f32, Expand);
     setOperationAction(ISD::UINT_TO_FP, MVT::i32, Expand);
     setOperationAction(ISD::SINT_TO_FP, MVT::i32, Expand);
     setOperationAction(ISD::FP_TO_UINT, MVT::i32, Expand);
     setOperationAction(ISD::FP_TO_SINT, MVT::i32, Expand);
-    setOperationAction(ISD::UINT_TO_FP, MVT::i64, Expand);
-    setOperationAction(ISD::SINT_TO_FP, MVT::i64, Expand);
-    setOperationAction(ISD::FP_TO_UINT, MVT::i64, Expand);
-    setOperationAction(ISD::FP_TO_SINT, MVT::i64, Expand);
   }
-  setOperationAction(ISD::FMA, MVT::f64, Expand);
+
+  setOperationAction(ISD::UINT_TO_FP, MVT::i64, Expand);
+  setOperationAction(ISD::SINT_TO_FP, MVT::i64, Expand);
+  setOperationAction(ISD::FP_TO_UINT, MVT::i64, Expand);
+  setOperationAction(ISD::FP_TO_SINT, MVT::i64, Expand);
+
   setOperationAction(ISD::SETCC, MVT::f64, Expand);
   setOperationAction(ISD::BITCAST, MVT::i64, Expand);
   setOperationAction(ISD::BITCAST, MVT::f64, Expand);
