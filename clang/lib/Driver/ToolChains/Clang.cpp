@@ -2364,6 +2364,11 @@ void Clang::AddXtensaTargetArgs(const ArgList &Args,
       }
     }
   }
+
+  if (Args.getLastArg(options::OPT_mtext_section_literals) != nullptr) {
+    CmdArgs.push_back("-mllvm");
+    CmdArgs.push_back("-mtext-section-literals");
+  }
 }
 
 void Clang::DumpCompilationDatabase(Compilation &C, StringRef Filename,
