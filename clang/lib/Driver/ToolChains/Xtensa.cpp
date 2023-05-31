@@ -266,12 +266,18 @@ void xtensa::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   if (!D.SysRoot.empty())
     CmdArgs.push_back(Args.MakeArgString("--sysroot=" + D.SysRoot));
 
+  bool LinkerIsLLD;
+  std::string LinkerPath = ToolChain.GetLinkerPath(&LinkerIsLLD);
   if (ToolChain.GCCToolchainName != "") {
-    Linker.assign(ToolChain.GCCToolchainDir);
-    llvm::sys::path::append(Linker, "bin",
-                            ToolChain.GCCToolchainName + "-" + getShortName());
+    if (!LinkerIsLLD) {
+      Linker.assign(ToolChain.GCCToolchainDir);
+      llvm::sys::path::append(
+          Linker, "bin", ToolChain.GCCToolchainName + "-" + getShortName());
+    } else {
+      Linker.assign(LinkerPath);
+    }
   } else {
-    Linker.assign(ToolChain.GetLinkerPath());
+    Linker.assign(LinkerPath);
   }
 
   const char *crtbegin, *crtend;
