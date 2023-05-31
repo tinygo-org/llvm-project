@@ -55,6 +55,8 @@ void XtensaAsmPrinter::emitInstruction(const MachineInstr *MI) {
         MCInstBuilder(Xtensa::JX).addReg(MI->getOperand(0).getReg()));
     return;
   }
+  case Xtensa::LOOPEND:
+    return;
   }
   Lower.lower(MI, LoweredMI);
   EmitToStreamer(*OutStreamer, LoweredMI);
