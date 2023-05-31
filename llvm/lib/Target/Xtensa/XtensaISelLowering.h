@@ -52,6 +52,8 @@ enum {
   // FP move
   MOVS,
 
+  MEMW,
+
   MOVSP,
 
   // Wraps a TargetGlobalAddress that should be loaded using PC-relative
@@ -155,6 +157,10 @@ public:
                       const SmallVectorImpl<SDValue> &OutVals, const SDLoc &DL,
                       SelectionDAG &DAG) const override;
 
+  bool shouldInsertFencesForAtomic(const Instruction *I) const override {
+    return true;
+  }
+
   MachineBasicBlock *
   EmitInstrWithCustomInserter(MachineInstr &MI,
                               MachineBasicBlock *BB) const override;
@@ -187,6 +193,8 @@ private:
 
   SDValue LowerShiftLeftParts(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerShiftRightParts(SDValue Op, SelectionDAG &DAG, bool IsSRA) const;
+
+  SDValue LowerATOMIC_FENCE(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue getAddrPCRel(SDValue Op, SelectionDAG &DAG) const;
 
