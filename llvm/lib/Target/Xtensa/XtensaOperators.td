@@ -23,6 +23,8 @@ def SDT_XtensaSelectCC            : SDTypeProfile<1, 5,
                                                  [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<2, 3>,
                                                   SDTCisVT<5, i32>]>;
+
+def SDT_XtensaMOVSP               : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>, SDTCisVT<0, i32>]>;
 def SDT_XtensaBrJT                : SDTypeProfile<0, 2,
                                                  [SDTCisPtrTy<0>, SDTCisVT<1, i32>]>;
 
@@ -43,7 +45,8 @@ def Xtensa_call: SDNode<"XtensaISD::CALL", SDT_XtensaCall,
 
 def Xtensa_retflag: SDNode<"XtensaISD::RET_FLAG", SDTNone,
                           [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
-
+def Xtensa_retWflag: SDNode<"XtensaISD::RETW_FLAG", SDTNone,
+                          [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
 def Xtensa_callseq_start: SDNode<"ISD::CALLSEQ_START", SDT_XtensaCallSeqStart,
                                 [SDNPHasChain, SDNPSideEffect, SDNPOutGlue]>;
@@ -57,6 +60,9 @@ def Xtensa_select : SDNode<"XtensaISD::SELECT", SDTSelect>;
 def Xtensa_select_cc: SDNode<"XtensaISD::SELECT_CC", SDT_XtensaSelectCC,
                             [SDNPInGlue]>;
 
+def Xtensa_movsp: SDNode<"XtensaISD::MOVSP", SDT_XtensaMOVSP,
+                            [SDNPInGlue]>;
+
 def Xtensa_shl: SDNode<"XtensaISD::SHL", SDT_XtensaSHL, [SDNPInGlue]>;
 def Xtensa_sra: SDNode<"XtensaISD::SRA", SDT_XtensaSRA, [SDNPInGlue]>;
 def Xtensa_srl: SDNode<"XtensaISD::SRL", SDT_XtensaSRL, [SDNPInGlue]>;
@@ -65,3 +71,5 @@ def Xtensa_ssl: SDNode<"XtensaISD::SSL", SDT_XtensaSSL, [SDNPOutGlue]>;
 def Xtensa_ssr: SDNode<"XtensaISD::SSR", SDT_XtensaSSR, [SDNPOutGlue]>;
 
 def Xtensa_brjt: SDNode<"XtensaISD::BR_JT", SDT_XtensaBrJT, [SDNPHasChain]>;
+def Xtensa_callw: SDNode<"XtensaISD::CALLW", SDT_XtensaCall,
+                        [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
