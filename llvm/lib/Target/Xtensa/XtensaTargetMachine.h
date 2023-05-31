@@ -15,6 +15,7 @@
 #ifndef LLVM_LIB_TARGET_XTENSA_XTENSATARGETMACHINE_H
 #define LLVM_LIB_TARGET_XTENSA_XTENSATARGETMACHINE_H
 
+#include "XtensaSubtarget.h"
 #include "llvm/Target/TargetMachine.h"
 #include <optional>
 
@@ -36,10 +37,15 @@ public:
                       std::optional<CodeModel::Model> CM, CodeGenOptLevel OL,
                       bool JIT);
 
+  const XtensaSubtarget *getSubtargetImpl() const { return &Subtarget; }
+  const XtensaSubtarget *getSubtargetImpl(const Function &F) const override;
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
   TargetLoweringObjectFile *getObjFileLowering() const override {
     return TLOF.get();
   }
+
+protected:
+  XtensaSubtarget Subtarget;
 };
 } // end namespace llvm
 
