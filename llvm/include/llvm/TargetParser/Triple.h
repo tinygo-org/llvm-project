@@ -182,6 +182,7 @@ public:
     Mesa,
     SUSE,
     OpenEmbedded,
+    Espressif,
     LastVendorType = OpenEmbedded
   };
   enum OSType {
