@@ -46,6 +46,7 @@ public:
   explicit XtensaTargetLowering(const TargetMachine &TM,
                                 const XtensaSubtarget &STI);
 
+  bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
   bool isFPImmLegal(const APFloat &Imm, EVT VT,
                     bool ForCodeSize) const override;
   const char *getTargetNodeName(unsigned Opcode) const override;
@@ -73,6 +74,10 @@ private:
 
   SDValue LowerImmediate(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerImmediateFP(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBlockAddress(BlockAddressSDNode *Node, SelectionDAG &DAG) const;
+  SDValue LowerJumpTable(JumpTableSDNode *JT, SelectionDAG &DAG) const;
+  SDValue LowerConstantPool(ConstantPoolSDNode *CP, SelectionDAG &DAG) const;
 
   SDValue getAddrPCRel(SDValue Op, SelectionDAG &DAG) const;
 
