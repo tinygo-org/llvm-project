@@ -121,13 +121,14 @@ bool XtensaRegisterInfo::eliminateFI(MachineBasicBlock::iterator II,
   case Xtensa::L16SI:
   case Xtensa::L16UI:
   case Xtensa::S16I:
-    Valid = (Offset >= 0 && Offset <= 510);
+    Valid = (Offset >= 0 && Offset <= 510) && ((Offset & 0x1) == 0);
     break;
   case Xtensa::LEA_ADD:
     Valid = (Offset >= -128 && Offset <= 127);
     break;
   default:
-    Valid = (Offset >= 0 && Offset <= 1020);
+    // assume that MI is 32-bit load/store operation
+    Valid = (Offset >= 0 && Offset <= 1020) && ((Offset & 0x3) == 0);
     break;
   }
 
