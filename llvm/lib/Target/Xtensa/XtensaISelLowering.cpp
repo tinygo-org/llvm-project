@@ -180,6 +180,8 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
   setOperationAction(ISD::SUBC, MVT::i32, Expand);
   setOperationAction(ISD::SUBE, MVT::i32, Expand);
 
+  setOperationAction(ISD::ABS, MVT::i32, Legal);
+
   setOperationAction(ISD::ADD, MVT::i64, Expand);
   setOperationAction(ISD::SUB, MVT::i64, Expand);
 
