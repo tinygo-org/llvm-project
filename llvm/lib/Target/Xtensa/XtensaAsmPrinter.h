@@ -17,6 +17,7 @@
 
 #include "XtensaTargetMachine.h"
 #include "llvm/CodeGen/AsmPrinter.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/Support/Compiler.h"
 
 namespace llvm {
@@ -28,6 +29,9 @@ class raw_ostream;
 
 class LLVM_LIBRARY_VISIBILITY XtensaAsmPrinter : public AsmPrinter {
   const MCSubtargetInfo *STI;
+  /// InConstantPool - Maintain state when emitting a sequence of constant
+  /// pool entries so we can properly mark them as data regions.
+  bool InConstantPool = false;
 public:
   explicit XtensaAsmPrinter(TargetMachine &TM,
                             std::unique_ptr<MCStreamer> Streamer)
@@ -37,6 +41,7 @@ public:
   StringRef getPassName() const override { return "Xtensa Assembly Printer"; }
   void emitInstruction(const MachineInstr *MI) override;
   void emitConstantPool() override;
+  void emitMachineConstantPoolEntry(const MachineConstantPoolEntry &CPE, int i);
   void emitMachineConstantPoolValue(MachineConstantPoolValue *MCPV) override;
   void printOperand(const MachineInstr *MI, int opNum, raw_ostream &O);
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,

@@ -14,10 +14,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "XtensaAsmPrinter.h"
-#include "XtensaSubtarget.h"
 #include "MCTargetDesc/XtensaInstPrinter.h"
 #include "XtensaConstantPoolValue.h"
 #include "XtensaMCInstLower.h"
+#include "XtensaSubtarget.h"
 #include "TargetInfo/XtensaTargetInfo.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/BinaryFormat/ELF.h"
@@ -48,6 +48,38 @@ void XtensaAsmPrinter::emitInstruction(const MachineInstr *MI) {
   XtensaMCInstLower Lower(MF->getContext(), *this);
   MCInst LoweredMI;
   unsigned Opc = MI->getOpcode();
+  const MachineConstantPool *MCP = MF->getConstantPool();
+
+  // If we just ended a constant pool, mark it as such.
+  if (InConstantPool && Opc != Xtensa::CONSTPOOL_ENTRY) {
+    OutStreamer->emitDataRegion(MCDR_DataRegionEnd);
+    InConstantPool = false;
+  }
+
+  if (Opc == Xtensa::CONSTPOOL_ENTRY) {
+    // CONSTPOOL_ENTRY - This instruction represents a floating
+    // constant pool in the function.  The first operand is the ID#
+    // for this instruction, the second is the index into the
+    // MachineConstantPool that this is, the third is the size in
+    // bytes of this constant pool entry.
+    // The required alignment is specified on the basic block holding this MI.
+    //
+    unsigned LabelId = (unsigned)MI->getOperand(0).getImm();
+    unsigned CPIdx = (unsigned)MI->getOperand(1).getIndex();
+
+    // If this is the first entry of the pool, mark it.
+    if (!InConstantPool) {
+      if (OutStreamer->hasRawTextSupport()) {
+        OutStreamer->emitRawText(StringRef("\t.literal_position\n"));
+      }
+      OutStreamer->emitDataRegion(MCDR_DataRegion);
+      InConstantPool = true;
+    }
+    const MachineConstantPoolEntry &MCPE = MCP->getConstants()[CPIdx];
+
+    emitMachineConstantPoolEntry(MCPE, LabelId);
+    return;
+  }
 
   switch (Opc) {
   case Xtensa::BR_JT: {
@@ -63,6 +95,61 @@ void XtensaAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EmitToStreamer(*OutStreamer, LoweredMI);
 }
 
+void XtensaAsmPrinter::emitMachineConstantPoolEntry(
+    const MachineConstantPoolEntry &CPE, int i) {
+  if (CPE.isMachineConstantPoolEntry()) {
+    XtensaConstantPoolValue *ACPV =
+        static_cast<XtensaConstantPoolValue *>(CPE.Val.MachineCPVal);
+    ACPV->setLabelId(i);
+    emitMachineConstantPoolValue(CPE.Val.MachineCPVal);
+  } else {
+    MCSymbol *LblSym = GetCPISymbol(i);
+    // TODO find a better way to check whether we emit data to .s file
+    if (OutStreamer->hasRawTextSupport()) {
+      std::string str("\t.literal ");
+      str += LblSym->getName();
+      str += ", ";
+      const Constant *C = CPE.Val.ConstVal;
+
+      Type *Ty = C->getType();
+      if (const auto *CFP = dyn_cast<ConstantFP>(C)) {
+        str += toString(CFP->getValueAPF().bitcastToAPInt(), 10, true);
+      } else if (const auto *CI = dyn_cast<ConstantInt>(C)) {
+        str += toString(CI->getValue(), 10, true);
+      } else if (isa<PointerType>(Ty)) {
+        const MCExpr *ME = lowerConstant(C);
+        const MCSymbolRefExpr &SRE = cast<MCSymbolRefExpr>(*ME);
+        const MCSymbol &Sym = SRE.getSymbol();
+        str += Sym.getName();
+      } else {
+        unsigned NumElements;
+        if (isa<VectorType>(Ty))
+          NumElements = (cast<FixedVectorType>(Ty))->getNumElements();
+        else
+          NumElements = Ty->getArrayNumElements();
+
+        for (unsigned I = 0; I < NumElements; I++) {
+          const Constant *CAE = C->getAggregateElement(I);
+          if (I > 0)
+            str += ", ";
+          if (const auto *CFP = dyn_cast<ConstantFP>(CAE)) {
+            str += toString(CFP->getValueAPF().bitcastToAPInt(), 10, true);
+          } else if (const auto *CI = dyn_cast<ConstantInt>(CAE)) {
+            str += toString(CI->getValue(), 10, true);
+          }
+        }
+      }
+
+      OutStreamer->emitRawText(StringRef(str));
+    } else {
+      OutStreamer->emitCodeAlignment(
+          Align(4), OutStreamer->getContext().getSubtargetInfo());
+      OutStreamer->emitLabel(LblSym);
+      emitGlobalConstant(getDataLayout(), CPE.Val.ConstVal);
+    }
+  }
+}
+
 /// EmitConstantPool - Print to the current output stream assembly
 /// representations of the constants in the constant pool MCP. This is
 /// used to print out constants which have been "spilled to memory" by
@@ -72,6 +159,9 @@ void XtensaAsmPrinter::emitConstantPool() {
   const MachineConstantPool *MCP = MF->getConstantPool();
   const std::vector<MachineConstantPoolEntry> &CP = MCP->getConstants();
   const XtensaSubtarget *Subtarget = &MF->getSubtarget<XtensaSubtarget>();
+
+  if (Subtarget->useTextSectionLiterals())
+    return;
 
   if (CP.empty())
     return;
@@ -89,22 +179,17 @@ void XtensaAsmPrinter::emitConstantPool() {
             (MCSectionELF *)getObjFileLowering().SectionForGlobal(&F, TM);
         std::string CSectionName = CS->getName().str();
         std::string SectionName;
-
-        if (Subtarget->useTextSectionLiterals()) {
-            SectionName = CSectionName;
+        std::size_t Pos = CSectionName.find(".text");
+        if (Pos != std::string::npos) {
+          if (Pos > 0)
+            SectionName = CSectionName.substr(0, Pos + 5);
+          else
+            SectionName = "";
+          SectionName += ".literal";
+          SectionName += CSectionName.substr(Pos + 5);
         } else {
-          std::size_t Pos = CSectionName.find(".text");
-          if (Pos != std::string::npos) {
-            if (Pos > 0)
-              SectionName = CSectionName.substr(0, Pos + 5);
-            else
-              SectionName = "";
-            SectionName += ".literal";
-            SectionName += CSectionName.substr(Pos + 5);
-          } else {
-            SectionName = CSectionName;
-            SectionName += ".literal";
-          }
+          SectionName = CSectionName;
+          SectionName += ".literal";
         }
 
         MCSectionELF *S =
@@ -115,57 +200,7 @@ void XtensaAsmPrinter::emitConstantPool() {
       }
     }
 
-    if (CPE.isMachineConstantPoolEntry()) {
-      XtensaConstantPoolValue *ACPV =
-          static_cast<XtensaConstantPoolValue *>(CPE.Val.MachineCPVal);
-      ACPV->setLabelId(i);
-      emitMachineConstantPoolValue(CPE.Val.MachineCPVal);
-    } else {
-      MCSymbol *LblSym = GetCPISymbol(i);
-      // TODO find a better way to check whether we emit data to .s file
-      if (OutStreamer->hasRawTextSupport()) {
-        std::string str("\t.literal ");
-        str += LblSym->getName();
-        str += ", ";
-        const Constant *C = CPE.Val.ConstVal;
-
-        Type *Ty = C->getType();
-        if (const auto *CFP = dyn_cast<ConstantFP>(C)) {
-          str += toString(CFP->getValueAPF().bitcastToAPInt(), 10, true);
-        } else if (const auto *CI = dyn_cast<ConstantInt>(C)) {
-          str += toString(CI->getValue(), 10, true);
-        } else if (isa<PointerType>(Ty)) {
-          const MCExpr *ME = lowerConstant(C);
-          const MCSymbolRefExpr &SRE = cast<MCSymbolRefExpr>(*ME);
-          const MCSymbol &Sym = SRE.getSymbol();
-          str += Sym.getName();
-        } else {
-          unsigned NumElements;
-          if (isa<VectorType>(Ty))
-            NumElements = (cast<FixedVectorType>(Ty))->getNumElements();
-          else
-            NumElements = Ty->getArrayNumElements();
-
-          for (unsigned I = 0; I < NumElements; I++) {
-            const Constant *CAE = C->getAggregateElement(I);
-            if (I > 0)
-              str += ", ";
-            if (const auto *CFP = dyn_cast<ConstantFP>(CAE)) {
-              str += toString(CFP->getValueAPF().bitcastToAPInt(), 10, true);
-            } else if (const auto *CI = dyn_cast<ConstantInt>(CAE)) {
-              str += toString(CI->getValue(), 10, true);
-            }
-          }
-        }
-
-        OutStreamer->emitRawText(StringRef(str));
-      } else {
-        OutStreamer->emitCodeAlignment(
-            Align(4), OutStreamer->getContext().getSubtargetInfo());
-        OutStreamer->emitLabel(LblSym);
-        emitGlobalConstant(getDataLayout(), CPE.Val.ConstVal);
-      }
-    }
+    emitMachineConstantPoolEntry(CPE, i);
   }
 }
 
