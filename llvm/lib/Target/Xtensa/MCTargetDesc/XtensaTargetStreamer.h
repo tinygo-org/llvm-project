@@ -20,12 +20,16 @@ namespace llvm {
 class formatted_raw_ostream;
 
 class XtensaTargetStreamer : public MCTargetStreamer {
+  StringRef LiteralSectionPrefix = "";
+
 public:
   XtensaTargetStreamer(MCStreamer &S);
   virtual void emitLiteral(MCSymbol *LblSym, const MCExpr *Value, SMLoc L) = 0;
   virtual void emitLiteralLabel(MCSymbol *LblSym, SMLoc L) = 0;
   virtual void emitLiteral(const MCExpr *Value, SMLoc L) = 0;
   virtual void emitLiteral(std::string str) = 0;
+  void setLiteralSectionPrefix(StringRef Name) { LiteralSectionPrefix = Name; }
+  StringRef getLiteralSectionPrefix() { return LiteralSectionPrefix; }
 };
 
 class XtensaTargetAsmStreamer : public XtensaTargetStreamer {

@@ -38,16 +38,22 @@ XtensaTargetELFStreamer::XtensaTargetELFStreamer(MCStreamer &S)
 void XtensaTargetELFStreamer::emitLiteralLabel(MCSymbol *LblSym, SMLoc L) {
   MCContext &Context = getStreamer().getContext();
   MCStreamer &OutStreamer = getStreamer();
-  MCSectionELF *CS = (MCSectionELF *)OutStreamer.getCurrentSectionOnly();
-  std::string CSectionName = CS->getName().str();
-  std::size_t Pos = CSectionName.find(".text");
+  StringRef LiteralSectionPrefix = getLiteralSectionPrefix();
   std::string SectionName;
-  if (Pos != std::string::npos) {
-    SectionName = ".literal";
-    SectionName += CSectionName.substr(Pos);
+
+  if (LiteralSectionPrefix != "") {
+    SectionName = LiteralSectionPrefix.str() + ".literal";
   } else {
-    SectionName = CSectionName;
-    SectionName += ".literal";
+    MCSectionELF *CS = (MCSectionELF *)OutStreamer.getCurrentSectionOnly();
+    std::string CSectionName = CS->getName().str();
+    std::size_t Pos = CSectionName.find(".text");
+    if (Pos != std::string::npos) {
+      SectionName = ".literal";
+      SectionName += CSectionName.substr(Pos);
+    } else {
+      SectionName = CSectionName;
+      SectionName += ".literal";
+    }
   }
 
   MCSection *ConstSection = Context.getELFSection(
@@ -72,15 +78,21 @@ void XtensaTargetELFStreamer::emitLiteral(const MCExpr *Value, SMLoc L) {
   MCContext &Context = getStreamer().getContext();
   MCStreamer &OutStreamer = getStreamer();
   MCSectionELF *CS = (MCSectionELF *)OutStreamer.getCurrentSectionOnly();
-  std::string CSectionName = CS->getName().str();
-  std::size_t Pos = CSectionName.find(".text");
+  StringRef LiteralSectionPrefix = getLiteralSectionPrefix();
   std::string SectionName;
-  if (Pos != std::string::npos) {
-    SectionName = ".literal";
-    SectionName += CSectionName.substr(Pos);
+
+  if (LiteralSectionPrefix != "") {
+    SectionName = LiteralSectionPrefix.str() + ".literal";
   } else {
-    SectionName = CSectionName;
-    SectionName += ".literal";
+    std::string CSectionName = CS->getName().str();
+    std::size_t Pos = CSectionName.find(".text");
+    if (Pos != std::string::npos) {
+      SectionName = ".literal";
+      SectionName += CSectionName.substr(Pos);
+    } else {
+      SectionName = CSectionName;
+      SectionName += ".literal";
+    }
   }
 
   MCSection *ConstSection = Context.getELFSection(
