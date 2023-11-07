@@ -130,7 +130,10 @@ bool XtensaPassConfig::addInstSelector() {
   return false;
 }
 
-void XtensaPassConfig::addIRPasses() { addPass(createAtomicExpandPass()); }
+void XtensaPassConfig::addIRPasses() {
+    addPass(createAtomicExpandPass());
+    TargetPassConfig::addIRPasses();
+}
 
 void XtensaPassConfig::addPreRegAlloc() {
   addPass(createXtensaHardwareLoops());
