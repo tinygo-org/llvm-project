@@ -210,6 +210,8 @@ def m_ve_Features_Group : OptionGroup<"<ve features group>">,
                           Group<m_Group>, DocName<"VE">;
 def m_loongarch_Features_Group : OptionGroup<"<loongarch features group>">,
                                  Group<m_Group>, DocName<"LoongArch">;
+def m_xtensa_Features_Group : OptionGroup<"<xtensa features group>">,
+                              Group<m_Group>, DocName<"Xtensa">;
 
 def m_libc_Group : OptionGroup<"<m libc group>">, Group<m_mips_Features_Group>,
                    Flags<[HelpHidden]>;
@@ -6099,6 +6101,13 @@ def mvevpu : Flag<["-"], "mvevpu">, Group<m_ve_Features_Group>,
   HelpText<"Emit VPU instructions for VE">;
 def mno_vevpu : Flag<["-"], "mno-vevpu">, Group<m_ve_Features_Group>;
 } // let Flags = [TargetSpecific]
+
+// Xtensa feature flags
+def malways_memw : Flag<["-"], "malways-memw">, Group<m_xtensa_Features_Group>;
+def mfix_esp32_psram_cache_issue : Flag<["-"], "mfix-esp32-psram-cache-issue">, Group<m_xtensa_Features_Group>;
+def mfix_esp32_psram_cache_strategy_EQ : Joined<["-"], "mfix-esp32-psram-cache-strategy=">, Group<m_xtensa_Features_Group>,
+    HelpText<" Psram cache fix strategies : memw, nops">,
+    Values<"memw, nops">;
 
 // These are legacy user-facing driver-level option spellings. They are always
 // aliases for options that are spelled using the more common Unix / GNU flag
