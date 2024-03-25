@@ -373,8 +373,8 @@ XtensaTargetLowering::XtensaTargetLowering(const TargetMachine &tm,
 
 /// Return the register type for a given MVT
 MVT XtensaTargetLowering::getRegisterTypeForCallingConv(LLVMContext &Context,
-                                                      CallingConv::ID CC,
-                                                      EVT VT) const {
+                                                        CallingConv::ID CC,
+                                                        EVT VT) const {
   if (VT.isFloatingPoint())
     return MVT::i32;
 
@@ -393,7 +393,7 @@ bool XtensaTargetLowering::isFMAFasterThanFMulAndFAdd(const MachineFunction &MF,
     break;
   }
 
- return false;
+  return false;
 }
 
 /// If a physical register, this returns the register that receives the
@@ -474,7 +474,6 @@ XtensaTargetLowering::getSingleConstraintMatchWeight(
     if (type->isFloatingPointTy())
       weight = CW_Register;
     break;
-
   }
   return weight;
 }
@@ -666,7 +665,7 @@ static SDValue PerformHWLoopCombine(SDNode *N, SelectionDAG &DAG,
         Size,
     };
     SDValue LoopDec = DAG.getNode(XtensaISD::LOOPDEC, dl,
-                                     DAG.getVTList(MVT::i32, MVT::Other), Args);
+                                  DAG.getVTList(MVT::i32, MVT::Other), Args);
 
     // We now need to make the intrinsic dead (it cannot be instruction
     // selected).
@@ -776,11 +775,13 @@ static bool CC_Xtensa_Custom(unsigned ValNo, MVT ValVT, MVT LocVT,
     Reg = State.AllocateReg(IntRegs);
     // If this is the first part of an i64 arg,
     // the allocated register must be either A2, A4 or A6.
-    if (needs64BitAlign && (Reg == Xtensa::A3 || Reg == Xtensa::A5 || Reg == Xtensa::A7))
+    if (needs64BitAlign &&
+        (Reg == Xtensa::A3 || Reg == Xtensa::A5 || Reg == Xtensa::A7))
       Reg = State.AllocateReg(IntRegs);
-    // arguments with 16byte alignment must be passed in the first register or passed via stack
+    // arguments with 16byte alignment must be passed in the first register or
+    // passed via stack
     if (needs128BitAlign && Reg != Xtensa::A2)
-      while ( (Reg = State.AllocateReg(IntRegs)) ) {
+      while ((Reg = State.AllocateReg(IntRegs))) {
       }
     LocVT = MVT::i32;
   } else if (ValVT == MVT::f64) {
@@ -1731,8 +1732,8 @@ SDValue XtensaTargetLowering::LowerVACOPY(SDValue Op, SelectionDAG &DAG) const {
   // 2*sizeof(int*) + sizeof(int) = 12 Byte
   unsigned VAListSize = 12;
   return DAG.getMemcpy(Op.getOperand(0), Op, Op.getOperand(1), Op.getOperand(2),
-                       DAG.getConstant(VAListSize, SDLoc(Op), MVT::i32), Align(8),
-                       false, true, false, MachinePointerInfo(),
+                       DAG.getConstant(VAListSize, SDLoc(Op), MVT::i32),
+                       Align(8), false, true, false, MachinePointerInfo(),
                        MachinePointerInfo());
 }
 
@@ -1827,11 +1828,9 @@ SDValue XtensaTargetLowering::LowerFunnelShift(SDValue Op,
   SDValue SetSAR;
 
   if (!IsFSHR) {
-    SetSAR = DAG.getNode(XtensaISD::SSL, DL,
-                         MVT::Glue, Shamt);
+    SetSAR = DAG.getNode(XtensaISD::SSL, DL, MVT::Glue, Shamt);
   } else {
-    SetSAR = DAG.getNode(XtensaISD::SSR, DL,
-                         MVT::Glue, Shamt);
+    SetSAR = DAG.getNode(XtensaISD::SSR, DL, MVT::Glue, Shamt);
   }
 
   return DAG.getNode(XtensaISD::SRC, DL, VT, Op0, Op1, SetSAR);
@@ -2098,9 +2097,7 @@ XtensaTargetLowering::emitSelectCC(MachineInstr &MI,
     BuildMI(BB, DL, TII.get(CmpKind), b)
         .addReg(LHS.getReg())
         .addReg(RHS.getReg());
-    BuildMI(BB, DL, TII.get(BrKind))
-        .addReg(b, RegState::Kill)
-        .addMBB(sinkMBB);
+    BuildMI(BB, DL, TII.get(BrKind)).addReg(b, RegState::Kill).addMBB(sinkMBB);
   } else {
     bool BrInv = false;
     int BrKind = GetBranchKind(Cond.getImm(), BrInv);
@@ -3364,6 +3361,7 @@ MachineBasicBlock *XtensaTargetLowering::EmitInstrWithCustomInserter(
     return MBB;
   }
   default:
-    llvm_unreachable("Unexpected instr type to insert");
+    return EmitDSPInstrWithCustomInserter(MI, MBB, TII, MF, MRI, DL);
+    // llvm_unreachable("Unexpected instr type to insert");
   }
 }
