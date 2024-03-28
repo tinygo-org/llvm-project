@@ -217,9 +217,12 @@ void baremetal::esp::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   Args.AddAllArgs(CmdArgs, options::OPT_L);
   Args.AddAllArgs(CmdArgs, options::OPT_u);
   ToolChain.AddFilePathLibArgs(Args, CmdArgs);
-  Args.AddAllArgs(CmdArgs,
-                  {options::OPT_T_Group, options::OPT_e, options::OPT_s,
-                   options::OPT_t, options::OPT_Z_Flag, options::OPT_r});
+  Args.AddAllArgs(CmdArgs, options::OPT_T_Group);
+  Args.AddAllArgs(CmdArgs, options::OPT_e);
+  Args.AddAllArgs(CmdArgs, options::OPT_s);
+  Args.AddAllArgs(CmdArgs, options::OPT_t);
+  Args.AddAllArgs(CmdArgs, options::OPT_Z_Flag);
+  Args.AddAllArgs(CmdArgs, options::OPT_r);
 
   // TODO: add C++ includes and libs if compiling C++.
 
@@ -262,6 +265,9 @@ void baremetal::esp::Assembler::ConstructJob(Compilation &C, const JobAction &JA
   if (Arg *A = Args.getLastArg(options::OPT_g_Group))
     if (!A->getOption().matches(options::OPT_g0))
       CmdArgs.push_back("-g");
+
+  if (Args.getLastArg(options::OPT_mtext_section_literals))
+    CmdArgs.push_back("--text-section-literals");
 
   if (Args.hasFlag(options::OPT_fverbose_asm, options::OPT_fno_verbose_asm,
                    false))
